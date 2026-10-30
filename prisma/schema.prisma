@@ -107,6 +107,8 @@ model User {
   installedStickerPackages UserStickerPackage[] @relation("userInstalledPackages")
   stickerFavorites         StickerFavorite[]
   stickerRecents           StickerRecent[]
+  storyReposts             StoryRepost[]
+  reposts                  Repost[]
 
   @@index([nickname])
   @@map("users")
@@ -134,6 +136,7 @@ model Post {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes    Like[]
   comments Comment[]
+  reposts  Repost[]
 
   @@index([userId])
   @@index([createdAt])
@@ -172,8 +175,12 @@ model Story {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  views StoryView[]
-  likes StoryLike[]
+  views    StoryView[]
+  likes    StoryLike[]
+  // When this story is a REPOST, the ORIGINAL story it copies.
+  repostOf StoryRepost?  @relation("storyRepostCopy")
+  // When this story is an ORIGINAL, the reposts that copied it.
+  reposts  StoryRepost[] @relation("storyRepostOriginal")
 
   @@index([userId])
   @@index([expiresAt])
@@ -215,6 +222,26 @@ model StoryLike {
   @@map("story_likes")
 }
 
+// A StoryRepost publishes a COPY of a story into the reposter's OWN story
+// strip ("Repostado de @autor"), so it EXPIRES with the original (24h). It
+// also records the ORIGINAL story so the notification/toggle can be resolved.
+// One repost per (user, original story) — toggling creates/deletes the row.
+model StoryRepost {
+  id              String   @id @default(cuid())
+  userId          String
+  originalStoryId String
+  storyId         String   @unique
+  createdAt       DateTime @default(now())
+
+  user          User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  originalStory Story @relation("storyRepostOriginal", fields: [originalStoryId], references: [id], onDelete: Cascade)
+  story         Story @relation("storyRepostCopy", fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, originalStoryId])
+  @@index([originalStoryId])
+  @@map("story_reposts")
+}
+
 model Like {
   id        String   @id @default(cuid())
   userId    String
@@ -227,6 +254,26 @@ model Like {
   @@unique([userId, postId])
   @@index([postId])
   @@map("likes")
+}
+
+// A Repost (Instagram/TikTok style "share to profile"): the SAME user can
+// repost a post AT MOST once (unique pair). Toggling deletes/creates the row,
+// so the button state is derived from its presence. The repost does NOT copy
+// the post — it is a reference, so the original stays the single source of
+// truth (edits/deletes cascade: deleting the post removes its reposts).
+model Repost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId, createdAt])
+  @@map("reposts")
 }
 
 model Comment {
@@ -341,10 +388,12 @@ model Notification {
   id          String   @id @default(cuid())
   recipientId String
   actorId     String
-  // LIKE | COMMENT | FOLLOW (extensible).
+  // LIKE | COMMENT | FOLLOW | REPOST | STORY_REPOST (extensible).
   type        String
   postId      String?
   commentId   String?
+  // Set for STORY_REPOST: the story the notification refers to.
+  storyId     String?
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
 

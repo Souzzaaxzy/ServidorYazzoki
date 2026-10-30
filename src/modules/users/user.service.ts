@@ -28,9 +28,12 @@ export async function getProfile(
         take: 50,
         include: {
           user: { select: AUTHOR_SELECT },
-          _count: { select: { likes: true, comments: true } },
+          _count: { select: { likes: true, comments: true, reposts: true } },
           ...(currentUserId
-            ? { likes: { where: { userId: currentUserId }, select: { userId: true } } }
+            ? {
+                likes: { where: { userId: currentUserId }, select: { userId: true } },
+                reposts: { where: { userId: currentUserId }, select: { userId: true } },
+              }
             : {}),
         },
       },

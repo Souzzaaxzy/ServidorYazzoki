@@ -33,6 +33,10 @@ export const NotificationType = {
   LIKE: 'LIKE',
   COMMENT: 'COMMENT',
   FOLLOW: 'FOLLOW',
+  /** Someone reposted YOUR post (share to profile). */
+  REPOST: 'REPOST',
+  /** Someone reposted YOUR story. */
+  STORY_REPOST: 'STORY_REPOST',
 } as const;
 export type NotificationType =
   (typeof NotificationType)[keyof typeof NotificationType];

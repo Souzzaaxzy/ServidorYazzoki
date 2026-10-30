@@ -6,6 +6,8 @@ import { getOrCreateConversation, sendMessage } from '../chat/chat.service.js';
 import {
   AUTHOR_SELECT,
 } from '../../utils/dto.js';
+import { NotificationType } from '../../types/enums.js';
+import { dispatchNotification } from '../push/push.service.js';
 
 // ── Stories ──────────────────────────────────────────────────
 // Ephemeral media that expires 24h after publication. Built ENTIRELY on the
@@ -65,6 +67,11 @@ export interface StoryItem {
   /** Whether the REQUESTING user liked this story (same as the feed). */
   liked: boolean;
   likeCount: number;
+  /**
+   * Set when this story is a REPOST: the ORIGINAL author's nickname, so the
+   * viewer shows "Repostado de @autor". Null for an original story.
+   */
+  repostedFrom: string | null;
 }
 
 function storyKind(story: { type: string; mediaType: string }): 'image' | 'video' | 'text' {
@@ -79,6 +86,7 @@ function toStoryItem(
   viewed: boolean,
   liked = false,
   likeCount = 0,
+  repostedFrom: string | null = null,
 ): StoryItem {
   const kind = storyKind(story);
   return {
@@ -102,6 +110,7 @@ function toStoryItem(
     mine: story.userId === viewerId,
     liked,
     likeCount,
+    repostedFrom,
   };
 }
 
@@ -193,7 +202,14 @@ export async function listActiveStories(
   const stories = await prisma.story.findMany({
     where: { expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'asc' },
-    include: { user: { select: AUTHOR_SELECT } },
+    include: {
+      user: { select: AUTHOR_SELECT },
+      // When this story is a REPOST, resolve the ORIGINAL author so the
+      // viewer can show "Repostado de @autor" (one include, no N+1).
+      repostOf: {
+        select: { originalStory: { select: { user: { select: { nickname: true } } } } },
+      },
+    },
   });
   if (stories.length === 0) return { groups: [] };
 
@@ -228,12 +244,14 @@ export async function listActiveStories(
   const byAuthor = new Map<string, StoryGroup>();
   for (const story of stories) {
     const viewed = viewerId ? viewedIds.has(story.id) : false;
+    const repostOf = (story as { repostOf?: { originalStory?: { user?: { nickname?: string } } } | null }).repostOf;
     const item = toStoryItem(
       story as unknown as StoryRow,
       viewerId ?? '',
       viewed,
       likedIds.has(story.id),
       likeCounts.get(story.id) ?? 0,
+      repostOf?.originalStory?.user?.nickname ?? null,
     );
     const existing = byAuthor.get(story.userId);
     if (existing) {
@@ -298,6 +316,97 @@ export async function deleteStory(userId: string, storyId: string): Promise<void
   }
   await prisma.story.delete({ where: { id: storyId } });
   await cleanupUnusedMedia([story.mediaUrl, story.thumbnailUrl]);
+}
+
+// ── Story reposts ────────────────────────────────────────────
+// Reposting a story publishes a COPY into the reposter's own strip (so it
+// EXPIRES with the original 24h) and records the ORIGINAL story. One repost
+// per (user, original) — the button is a TOGGLE. The original author gets a
+// STORY_REPOST notification.
+
+/** Toggles the session user's repost of a story. */
+export async function toggleStoryRepost(
+  userId: string,
+  storyId: string,
+): Promise<{ reposted: boolean }> {
+  const original = await prisma.story.findUnique({
+    where: { id: storyId },
+    select: {
+      id: true,
+      userId: true,
+      type: true,
+      mediaUrl: true,
+      mediaType: true,
+      text: true,
+      thumbnailUrl: true,
+      caption: true,
+      expiresAt: true,
+    },
+  });
+  if (!original || original.expiresAt <= new Date()) {
+    throw ApiError.notFound('Story não encontrado.');
+  }
+  if (original.userId === userId) {
+    throw ApiError.invalidRequest('Você não pode repostar o seu próprio Story.');
+  }
+
+  const existing = await prisma.storyRepost.findUnique({
+    where: { userId_originalStoryId: { userId, originalStoryId: storyId } },
+    select: { id: true, storyId: true },
+  });
+
+  if (existing) {
+    // Undo: delete the COPY story (cascades the StoryRepost row) and the
+    // notification we produced for it.
+    await prisma.story.delete({ where: { id: existing.storyId } }).catch(() => void 0);
+    await prisma.notification.deleteMany({
+      where: {
+        recipientId: original.userId,
+        actorId: userId,
+        type: NotificationType.STORY_REPOST,
+      },
+    });
+    return { reposted: false };
+  }
+
+  // Create the COPY in the reposter's strip. It keeps the ORIGINAL expiry so
+  // the repost disappears together with the original (24h window).
+  const copy = await prisma.story.create({
+    data: {
+      userId,
+      type: original.type,
+      mediaUrl: original.mediaUrl,
+      mediaType: original.mediaType,
+      text: original.text,
+      thumbnailUrl: original.thumbnailUrl,
+      caption: original.caption,
+      expiresAt: original.expiresAt,
+    },
+  });
+  await prisma.storyRepost.create({
+    data: { userId, originalStoryId: storyId, storyId: copy.id },
+  });
+
+  const note = await prisma.notification.create({
+    data: {
+      recipientId: original.userId,
+      actorId: userId,
+      type: NotificationType.STORY_REPOST,
+      storyId,
+    },
+  });
+  await dispatchNotification(original.userId, note).catch(() => void 0);
+
+  return { reposted: true };
+}
+
+/** Whether the session user reposted [storyId] (drives the active button). */
+export async function isStoryReposted(userId: string, storyId: string): Promise<boolean> {
+  const row = await prisma.storyRepost.findUnique({
+    where: { userId_originalStoryId: { userId, originalStoryId: storyId } },
+    select: { id: true },
+  });
+  return row !== null;
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   purgeExpiredStories,
   replyToStory,
   toggleStoryLike,
+  toggleStoryRepost,
 } from './story.service.js';
 import { createStorySchema, replyStorySchema } from './story.schema.js';
 
@@ -57,6 +58,18 @@ export const storyRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
     const { id } = request.params as { id: string };
     try {
       const result = await toggleStoryLike(request.user!.id, id);
+      return reply.send(result);
+    } catch (err) {
+      throw toApiError(err);
+    }
+  });
+
+  // POST /stories/:id/repost — TOGGLE: reposts the story into the session
+  // user's own strip (a copy that expires with the original), or removes it.
+  app.post('/stories/:id/repost', { onRequest: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await toggleStoryRepost(request.user!.id, id);
       return reply.send(result);
     } catch (err) {
       throw toApiError(err);

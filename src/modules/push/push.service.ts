@@ -30,6 +30,7 @@ export interface PushMessage {
     actorNickname: string;
     postId: string | null;
     commentId: string | null;
+    storyId: string | null;
   };
 }
 
@@ -326,6 +327,10 @@ export function composeBody(type: string, actorNickname: string): string {
       return `${actorNickname} comentou na sua publicação.`;
     case NotificationType.FOLLOW:
       return `${actorNickname} começou a seguir você.`;
+    case NotificationType.REPOST:
+      return `${actorNickname} repostou o seu post.`;
+    case NotificationType.STORY_REPOST:
+      return `${actorNickname} repostou o seu stories.`;
     default:
       return `${actorNickname} interagiu com você.`;
   }
@@ -337,6 +342,7 @@ export function buildMessage(
     type: string;
     postId: string | null;
     commentId: string | null;
+    storyId: string | null;
   },
   actorNickname: string,
 ): PushMessage {
@@ -350,6 +356,7 @@ export function buildMessage(
       actorNickname,
       postId: notification.postId,
       commentId: notification.commentId,
+      storyId: notification.storyId,
     },
   };
 }
@@ -370,6 +377,7 @@ export async function dispatchNotification(
     type: string;
     postId: string | null;
     commentId: string | null;
+    storyId: string | null;
   },
 ): Promise<boolean> {
   if (!rememberDispatched(notification.id)) return false;

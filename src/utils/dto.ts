@@ -147,6 +147,10 @@ export interface FeedPost {
   likeCount: number;
   liked: boolean;
   commentCount: number;
+  /** How many users reposted this post (share to profile). */
+  repostCount: number;
+  /** Whether the VIEWER reposted this post (drives the active button). */
+  reposted: boolean;
 }
 
 export interface PostDetail extends FeedPost {
@@ -156,13 +160,17 @@ export interface PostDetail extends FeedPost {
 export function toFeedPost(
   post: Post & {
     user: Pick<User, 'id' | 'nickname' | 'avatarUrl'>;
-    _count?: { likes: number; comments: number };
+    _count?: { likes: number; comments: number; reposts?: number };
     likes?: { userId: string }[];
+    reposts?: { userId: string }[];
   },
   currentUserId?: string,
 ): FeedPost {
   const liked = currentUserId
     ? (post.likes?.some((l) => l.userId === currentUserId) ?? false)
+    : false;
+  const reposted = currentUserId
+    ? (post.reposts?.some((r) => r.userId === currentUserId) ?? false)
     : false;
   return {
     id: post.id,
@@ -179,6 +187,8 @@ export function toFeedPost(
     likeCount: post._count?.likes ?? 0,
     liked,
     commentCount: post._count?.comments ?? 0,
+    repostCount: post._count?.reposts ?? 0,
+    reposted,
   };
 }
 
@@ -240,6 +250,7 @@ export interface NotificationItem {
   createdAt: string;
   postId: string | null;
   commentId: string | null;
+  storyId: string | null;
   actor: Pick<PublicUser, 'id' | 'nickname' | 'avatarUrl'>;
 }
 
@@ -255,6 +266,7 @@ export function toNotificationItem(
     createdAt: notification.createdAt.toISOString(),
     postId: notification.postId,
     commentId: notification.commentId,
+    storyId: notification.storyId,
     actor: {
       id: notification.actor.id,
       nickname: notification.actor.nickname,

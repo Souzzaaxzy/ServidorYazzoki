@@ -9,7 +9,13 @@ import { grantCoins, COIN_REWARDS, CoinReason } from '../../gamification/coin.se
 
 const FEED_INCLUDE = {
   user: { select: AUTHOR_SELECT },
-  _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
+  _count: {
+    select: {
+      likes: true,
+      comments: { where: { deletedAt: null } },
+      reposts: true,
+    },
+  },
 } as const;
 
 export async function createPost(
@@ -27,6 +33,7 @@ export async function createPost(
     include: {
       ...FEED_INCLUDE,
       likes: { where: { userId }, select: { userId: true } },
+      reposts: { where: { userId }, select: { userId: true } },
     },
   });
 
@@ -59,9 +66,18 @@ export async function getFeed(
     take: limit + 1,
     include: {
       user: { select: AUTHOR_SELECT },
-      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
+      _count: {
+        select: {
+          likes: true,
+          comments: { where: { deletedAt: null } },
+          reposts: true,
+        },
+      },
       ...(currentUserId
-        ? { likes: { where: { userId: currentUserId }, select: { userId: true } } }
+        ? {
+            likes: { where: { userId: currentUserId }, select: { userId: true } },
+            reposts: { where: { userId: currentUserId }, select: { userId: true } },
+          }
         : {}),
     },
   });
@@ -81,9 +97,18 @@ export async function getPostById(id: string, currentUserId?: string): Promise<F
     where: { id },
     include: {
       user: { select: AUTHOR_SELECT },
-      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
+      _count: {
+        select: {
+          likes: true,
+          comments: { where: { deletedAt: null } },
+          reposts: true,
+        },
+      },
       ...(currentUserId
-        ? { likes: { where: { userId: currentUserId }, select: { userId: true } } }
+        ? {
+            likes: { where: { userId: currentUserId }, select: { userId: true } },
+            reposts: { where: { userId: currentUserId }, select: { userId: true } },
+          }
         : {}),
     },
   });
