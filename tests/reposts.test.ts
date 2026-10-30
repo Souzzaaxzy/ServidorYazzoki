@@ -173,6 +173,44 @@ describe('Repost de post (toggle)', () => {
     expect(item.author.nickname).toBe('rp_attr_a');
   });
 
+  it('lists ALL reposters of a post (paginated) at /posts/:id/reposters', async () => {
+    const author = await createAndLoginUser(server, { nickname: 'rp_all_a' });
+    const r1 = await createAndLoginUser(server, { nickname: 'rp_all_b' });
+    const r2 = await createAndLoginUser(server, { nickname: 'rp_all_c' });
+    const post = await createPost(author.accessToken, 'todos os reposts');
+    await repost(r1.accessToken, post.id);
+    await repost(r2.accessToken, post.id);
+
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/posts/${post.id}/reposters`,
+      headers: auth(author.accessToken),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    expect(body.total).toBe(2);
+    expect(body.users).toHaveLength(2);
+    const names = body.users.map((u: { nickname: string }) => u.nickname).sort();
+    expect(names).toEqual(['rp_all_b', 'rp_all_c']);
+    // Each entry carries the data the sheet needs to open the profile.
+    expect(body.users[0].id).toBeTruthy();
+    expect(body.users[0]).toHaveProperty('repostedAt');
+  });
+
+  it('reposters endpoint is paginated and returns an empty list when nobody reposted', async () => {
+    const author = await createAndLoginUser(server, { nickname: 'rp_none_a' });
+    const post = await createPost(author.accessToken, 'sem reposts');
+
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/posts/${post.id}/reposters?page=1&pageSize=1`,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    expect(body.total).toBe(0);
+    expect(body.users).toHaveLength(0);
+  });
+
   it('404 for an unknown post', async () => {
     const user = await createAndLoginUser(server, { nickname: 'rp_404' });
     expect((await repost(user.accessToken, 'does-not-exist')).statusCode).toBe(404);

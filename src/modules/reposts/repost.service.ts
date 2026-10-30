@@ -1,6 +1,6 @@
 import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/errors.js';
-import { AUTHOR_SELECT, toFeedPost, type FeedPost } from '../../utils/dto.js';
+import { AUTHOR_SELECT, toFeedPost, type FeedPost, type ReposterUser } from '../../utils/dto.js';
 import { NotificationType } from '../../types/enums.js';
 import { dispatchNotification } from '../push/push.service.js';
 
@@ -158,6 +158,47 @@ export async function listReposts(
         avatarUrl: r.user.avatarUrl,
         repostedAt: r.createdAt.toISOString(),
       },
+    })),
+    total,
+    page: safePage,
+    pageSize: safeSize,
+  };
+}
+
+export interface RepostersPage {
+  users: ReposterUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * EVERY user who reposted [postId], newest first, paginated. The post payload
+ * only embeds the 3 newest (for the badge); this backs the "see all" sheet.
+ */
+export async function listReposters(
+  postId: string,
+  page: number,
+  pageSize: number,
+): Promise<RepostersPage> {
+  const safePage = Math.max(1, page);
+  const safeSize = Math.min(Math.max(1, pageSize), 50);
+  const [total, rows] = await prisma.$transaction([
+    prisma.repost.count({ where: { postId } }),
+    prisma.repost.findMany({
+      where: { postId },
+      orderBy: { createdAt: 'desc' },
+      skip: (safePage - 1) * safeSize,
+      take: safeSize,
+      include: { user: { select: AUTHOR_SELECT } },
+    }),
+  ]);
+  return {
+    users: rows.map((r) => ({
+      id: r.user.id,
+      nickname: r.user.nickname,
+      avatarUrl: r.user.avatarUrl,
+      repostedAt: r.createdAt.toISOString(),
     })),
     total,
     page: safePage,
