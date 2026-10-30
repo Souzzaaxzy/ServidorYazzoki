@@ -3,7 +3,7 @@
 ## Arquitetura
 
 ```
-YazzokiApp ──► URL PÚBLICA (Bronxys/Pterodactyl) ──► ServidorMtx ──► data/yazzoki.db (SQLite)
+YazzokiApp ──► URL PÚBLICA (Bronxys/Pterodactyl) ──► ServidorYazzoki ──► data/yazzoki.db (SQLite)
 ```
 
 UMA API, UMA URL, UM servidor, UM banco. Sem túneis, sem URLs externas,

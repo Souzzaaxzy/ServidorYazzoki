@@ -92,7 +92,7 @@ async function main() {
         nicknameKey: 'maria',
         passwordHash: password,
         recoveryCodeHash: hashRecoveryCode(generateRecoveryCode()),
-        bio: 'Designer | Futurista | \u{1F49C} cyberpunk',
+        bio: 'Designer | Minimalista | \u{1F338} washi',
         avatarUrl: 'https://i.pravatar.cc/300?img=45',
       },
       {
@@ -123,7 +123,7 @@ async function main() {
     prisma.post.create({
       data: {
         userId: maria.id,
-        text: 'Adorando a estética cyberpunk dessa nova versão. 🔮✨ #yazzoki',
+        text: 'Adorando a estética japonesa dessa nova versão. 🏮✨ #yazzoki',
         imageUrl: null,
       },
     }),

@@ -1,4 +1,4 @@
-# ServidorMtx — Repository Notes
+# ServidorYazzoki — Repository Notes
 
 ## Project
 Yazzoki 💤 backend — Node.js + Fastify + Prisma + **SQLite** (migrated from

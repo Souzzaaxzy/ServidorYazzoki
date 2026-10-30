@@ -12,7 +12,7 @@
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/Souzzaaxzy/ServidorMtx.git}"
+REPO_URL="${REPO_URL:-https://github.com/Souzzaaxzy/ServidorYazzoki.git}"
 BRANCH="${BRANCH:-main}"
 
 log()  { printf '\033[1;36m▶ %s\033[0m\n' "$*"; }

@@ -23,9 +23,9 @@
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/Souzzaaxzy/ServidorMtx.git}"
+REPO_URL="${REPO_URL:-https://github.com/Souzzaaxzy/ServidorYazzoki.git}"
 BRANCH="${BRANCH:-main}"
-TARGET_DIR="${TARGET_DIR:-$HOME/ServidorMtx}"
+TARGET_DIR="${TARGET_DIR:-$HOME/ServidorYazzoki}"
 NO_CLONE=0
 
 for arg in "$@"; do

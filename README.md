@@ -1,4 +1,4 @@
-# ServidorMtx — Yazzoki Backend API
+# ServidorYazzoki — Yazzoki Backend API
 
 Backend do [Yazzoki 💤](https://github.com/Souzzaaxzy/YazzokiApp) — Node.js + Fastify + Prisma + SQLite.
 
@@ -13,8 +13,8 @@ Backend do [Yazzoki 💤](https://github.com/Souzzaaxzy/YazzokiApp) — Node.js 
 Requisitos no host: **Docker** + **Docker Compose**.
 
 ```bash
-git clone https://github.com/Souzzaaxzy/ServidorMtx.git
-cd ServidorMtx
+git clone https://github.com/Souzzaaxzy/ServidorYazzoki.git
+cd ServidorYazzoki
 
 # 1. configurar ambiente
 cp .env.example .env
@@ -104,8 +104,8 @@ Requisitos no host: **Node 20+** apenas. Sem Docker, sem PostgreSQL.
 Um único comando provisiona **tudo** e sobe o servidor:
 
 ```bash
-git clone https://github.com/Souzzaaxzy/ServidorMtx.git
-cd ServidorMtx
+git clone https://github.com/Souzzaaxzy/ServidorYazzoki.git
+cd ServidorYazzoki
 npm start
 ```
 
@@ -228,8 +228,8 @@ node -v   # precisa ser >= 24.7
 
 ```bash
 pkg install git -y
-git clone --depth 1 https://github.com/Souzzaaxzy/ServidorMtx.git
-cd ServidorMtx
+git clone --depth 1 https://github.com/Souzzaaxzy/ServidorYazzoki.git
+cd ServidorYazzoki
 bash termux/termux-native.sh
 ```
 
@@ -251,7 +251,7 @@ A API responde em `http://127.0.0.1:3000` (ou na `PORT` definida) —
 ### Atualizar uma instalação existente
 
 ```bash
-cd ServidorMtx
+cd ServidorYazzoki
 git pull
 bash termux/termux-native.sh --no-clone   # reinstala/atualiza e migra
 bash start.sh
@@ -346,13 +346,13 @@ Se preferir usar um egg Node.js genérico já existente:
 
 - **Startup command** (clona o repo se o container estiver vazio, depois sobe):
   ```
-  bash -c 'if [ ! -f package.json ]; then git clone --depth 1 https://github.com/Souzzaaxzy/ServidorMtx.git /tmp/mx && cp -a /tmp/mx/. . && rm -rf /tmp/mx; fi && npm start'
+  bash -c 'if [ ! -f package.json ]; then git clone --depth 1 https://github.com/Souzzaaxzy/ServidorYazzoki.git /tmp/mx && cp -a /tmp/mx/. . && rm -rf /tmp/mx; fi && npm start'
   ```
   > O `npm start` sozinho falha com "no such file package.json" quando o
   > container está vazio. O one-liner acima resolve isso clonando antes.
 - **Install script** (opcional, acelera o primeiro start):
   ```
-  git clone https://github.com/Souzzaaxzy/ServidorMtx.git . && npm install --include=dev && ./node_modules/.bin/prisma generate && npm run build
+  git clone https://github.com/Souzzaaxzy/ServidorYazzoki.git . && npm install --include=dev && ./node_modules/.bin/prisma generate && npm run build
   ```
 - **Variáveis**: `JWT_SECRET` (obrigatória), `NODE_ENV=production`
   (opcional), `CORS_ORIGIN` (opcional). A porta vem do painel
