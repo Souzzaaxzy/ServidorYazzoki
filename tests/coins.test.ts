@@ -13,7 +13,7 @@ afterAll(async () => {
   await closeTestServer();
 });
 
-describe('Matrix Coins ledger', () => {
+describe('Yazzoki Coins ledger', () => {
   it('records every movement and the balance is the sum', async () => {
     const u = await createAndLoginUser(server, { nickname: 'coin_user' });
 

@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────
-# MATRIX API — Dockerfile (production-ready, multi-stage)
+# Yazzoki API — Dockerfile (production-ready, multi-stage)
 # Node 22 + Fastify + Prisma + SQLite
 # ──────────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Local uploads directory (when STORAGE_ENDPOINT is empty).
-# SQLite persistent storage directory (data/matrix.db lives here).
+# SQLite persistent storage directory (data/yazzoki.db lives here).
 RUN mkdir -p /app/uploads /app/data
 
 # Entrypoint runs prisma migrate deploy then starts the server.

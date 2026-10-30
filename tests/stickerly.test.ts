@@ -212,7 +212,7 @@ describe('Sticker.ly endpoints', () => {
     expect(body.package).not.toBeNull();
     expect(body.package.installed).toBe(true);
     expect(body.package.stickerCount).toBe(2);
-    // URLs finais são do armazenamento do MATRIX, não da fonte externa.
+    // URLs finais são do armazenamento do Yazzoki, não da fonte externa.
     expect(body.package.stickers[0].fileUrl).toContain('/static/');
     expect(body.package.stickers[0].fileUrl).not.toContain('pstatic.net');
 

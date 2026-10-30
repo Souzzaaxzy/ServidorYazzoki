@@ -567,7 +567,7 @@ describe('Stories', () => {
     }
 
     function videoMultipart(durationMs?: number): Buffer {
-      const boundary = '----matrix-story-video-boundary-x9';
+      const boundary = '----yazzoki-story-video-boundary-x9';
       const parts: Buffer[] = [];
       if (durationMs !== undefined) {
         parts.push(
@@ -600,7 +600,7 @@ describe('Stories', () => {
         headers: {
           authorization: `Bearer ${user.accessToken}`,
           'content-type':
-            'multipart/form-data; boundary=----matrix-story-video-boundary-x9',
+            'multipart/form-data; boundary=----yazzoki-story-video-boundary-x9',
         },
         payload: videoMultipart(121_000),
       });
@@ -616,7 +616,7 @@ describe('Stories', () => {
         headers: {
           authorization: `Bearer ${user.accessToken}`,
           'content-type':
-            'multipart/form-data; boundary=----matrix-story-video-boundary-x9',
+            'multipart/form-data; boundary=----yazzoki-story-video-boundary-x9',
         },
         payload: videoMultipart(120_000),
       });
@@ -632,7 +632,7 @@ describe('Stories', () => {
         headers: {
           authorization: `Bearer ${user.accessToken}`,
           'content-type':
-            'multipart/form-data; boundary=----matrix-story-video-boundary-x9',
+            'multipart/form-data; boundary=----yazzoki-story-video-boundary-x9',
         },
         payload: videoMultipart(),
       });

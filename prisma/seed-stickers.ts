@@ -51,8 +51,8 @@ export async function seedStickerPackages(prisma: PrismaClient): Promise<void> {
   const existing = await prisma.stickerPackage.findFirst();
   if (existing) return; // idempotent — never duplicate the catalog
 
-  const matrixCore = await fs
-    .readdir(path.join(ART_ROOT, 'matrix-core'))
+  const yazzokiCore = await fs
+    .readdir(path.join(ART_ROOT, 'yazzoki-core'))
     .catch(() => [] as string[]);
   const neonBugs = await fs
     .readdir(path.join(ART_ROOT, 'neon-bugs'))
@@ -60,10 +60,10 @@ export async function seedStickerPackages(prisma: PrismaClient): Promise<void> {
 
   const builds: SeedStickerPackageInput[] = [
     {
-      slug: 'matrix-core',
-      name: 'Matrix Core',
-      description: 'Núcleo do sistema — o pacote oficial do MATRIX.',
-      author: 'MATRIX',
+      slug: 'yazzoki-core',
+      name: 'Yazzoki Core',
+      description: 'Núcleo do sistema — o pacote oficial do Yazzoki.',
+      author: 'Yazzoki',
       iconFile: 'sticker_1.png',
       stickers: [],
     },
@@ -71,7 +71,7 @@ export async function seedStickerPackages(prisma: PrismaClient): Promise<void> {
       slug: 'neon-bugs',
       name: 'Neon Bugs',
       description: 'Bugs, glitches e robôs neon — o lado core do grid.',
-      author: 'MATRIX',
+      author: 'Yazzoki',
       iconFile: 'sticker_1.png',
       stickers: [],
     },
@@ -82,7 +82,7 @@ export async function seedStickerPackages(prisma: PrismaClient): Promise<void> {
   for (const pkg of builds) {
     const icon = await copyArt(pkg.slug, pkg.iconFile);
     iconUrls.set(pkg.slug, icon);
-    const dir = pkg.slug === 'matrix-core' ? matrixCore : neonBugs;
+    const dir = pkg.slug === 'yazzoki-core' ? yazzokiCore : neonBugs;
     const files = dir
       .filter((f) => /^sticker_\d+\.png$/.test(f))
       .sort((a, b) => {

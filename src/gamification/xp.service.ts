@@ -44,7 +44,7 @@ export interface UserLevel {
 }
 
 // Resolves a user's level from the cumulative XP total. Levels are defined
-// in the `levels` table (RECRUTA → LENDA MATRIX). Seeded by migration.
+// in the `levels` table (RECRUTA → LENDA YAZZOKI). Seeded by migration.
 export async function getUserLevel(userId: string): Promise<UserLevel> {
   const totalXp = await getXpTotal(userId);
   const levels = await prisma.level.findMany({ orderBy: { minXp: 'asc' } });

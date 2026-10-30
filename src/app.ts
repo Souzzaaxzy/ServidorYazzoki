@@ -91,8 +91,8 @@ export async function buildServer() {
   await app.register(swagger, {
     openapi: {
       info: {
-        title: 'MATRIX API',
-        description: 'MATRIX 💤 — backend da rede social cronológica.',
+        title: 'Yazzoki API',
+        description: 'Yazzoki 💤 — backend da rede social cronológica.',
         version: '1.0.0',
       },
       components: {
@@ -165,11 +165,11 @@ export async function buildServer() {
   app.get('/health', async (_request, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      return reply.status(200).send({ status: 'ok', service: 'MATRIX API', database: 'ok' });
+      return reply.status(200).send({ status: 'ok', service: 'Yazzoki API', database: 'ok' });
     } catch {
       return reply
         .status(503)
-        .send({ status: 'error', service: 'MATRIX API', database: 'unavailable' });
+        .send({ status: 'error', service: 'Yazzoki API', database: 'unavailable' });
     }
   });
 
@@ -182,22 +182,22 @@ import { fileURLToPath } from 'node:url';
 async function start() {
   // Startup banner — plain console lines (not pino JSON) so the Pterodactyl/
   // Bronxys console shows a readable summary. Secrets are NEVER printed.
-  console.log('[MATRIX] Iniciando API...');
-  console.log(`[MATRIX] Ambiente: ${process.env.NODE_ENV ?? 'production (padrão)'}`);
-  console.log('[MATRIX] Banco: SQLite');
-  console.log(`[MATRIX] Banco: ${env.databaseUrl.replace(/^file:/, '')}`);
-  console.log(`[MATRIX] Porta obtida do ambiente: ${env.port}`);
-  console.log('[MATRIX] Host: 0.0.0.0');
+  console.log('[Yazzoki] Iniciando API...');
+  console.log(`[Yazzoki] Ambiente: ${process.env.NODE_ENV ?? 'production (padrão)'}`);
+  console.log('[Yazzoki] Banco: SQLite');
+  console.log(`[Yazzoki] Banco: ${env.databaseUrl.replace(/^file:/, '')}`);
+  console.log(`[Yazzoki] Porta obtida do ambiente: ${env.port}`);
+  console.log('[Yazzoki] Host: 0.0.0.0');
   // Estado do cookie do YouTube, sem revelar o valor (é credencial). É a
   // primeira coisa a conferir quando a busca de música falha por anti-bot.
-  console.log(`[MATRIX] Cookies YouTube: ${cookieSummary()}`);
+  console.log(`[Yazzoki] Cookies YouTube: ${cookieSummary()}`);
 
   // Verify the SQLite database is reachable before accepting traffic.
   try {
     await prisma.$queryRaw`SELECT 1`;
-    console.log('[MATRIX] SQLite conectado.');
+    console.log('[Yazzoki] SQLite conectado.');
   } catch (err) {
-    console.error('[MATRIX] ERRO: não foi possível conectar ao banco SQLite.');
+    console.error('[Yazzoki] ERRO: não foi possível conectar ao banco SQLite.');
     logger.error(
       { err: err instanceof Error ? err.message : String(err) },
       'database connection failed',
@@ -210,7 +210,7 @@ async function start() {
     // Bind 0.0.0.0 so the server is reachable inside the Pterodactyl
     // container; the port comes from the environment (PORT / SERVER_PORT).
     await app.listen({ port: env.port, host: '0.0.0.0' });
-    console.log('[MATRIX] API iniciada com sucesso.');
+    console.log('[Yazzoki] API iniciada com sucesso.');
     await logPublicUrl();
     // Chat history lives on the phones; the server copy is a delivery queue.
     // This drains it so the database and the uploads folder stop growing.
@@ -236,7 +236,7 @@ function startMessageRetention(): void {
       .then((r) => {
         if (r.delivered || r.undelivered || r.filesDeleted) {
           console.log(
-            `[MATRIX] Retenção: ${r.delivered} entregues + ${r.undelivered} não entregues removidas, ${r.filesDeleted} arquivo(s) apagado(s).`,
+            `[Yazzoki] Retenção: ${r.delivered} entregues + ${r.undelivered} não entregues removidas, ${r.filesDeleted} arquivo(s) apagado(s).`,
           );
         }
       })
@@ -277,29 +277,29 @@ async function detectPublicIp(): Promise<string | null> {
   }
 }
 
-// Prints the `URL:` line the user copies into the MatrixApp configuration.
+// Prints the `URL:` line the user copies into the YazzokiApp configuration.
 // Priority: PUBLIC_API_URL (panel) → auto-detected egress IP:port → panel
 // instructions. Never invents a hostname.
 async function logPublicUrl(): Promise<void> {
   if (env.publicApiUrl) {
-    console.log(`[MATRIX] URL: ${env.publicApiUrl}`);
-    console.log('[MATRIX] ↑ Use esta URL no MatrixApp (API_BASE_URL).');
-    console.log(`[MATRIX] Health check: ${env.publicApiUrl}/health`);
+    console.log(`[Yazzoki] URL: ${env.publicApiUrl}`);
+    console.log('[Yazzoki] ↑ Use esta URL no YazzokiApp (API_BASE_URL).');
+    console.log(`[Yazzoki] Health check: ${env.publicApiUrl}/health`);
     return;
   }
   const ip = await detectPublicIp();
   if (ip) {
-    console.log(`[MATRIX] URL: http://${ip}:${env.port}`);
+    console.log(`[Yazzoki] URL: http://${ip}:${env.port}`);
     console.log(
-      '[MATRIX] ↑ URL detectada automaticamente (IP público + porta alocada).' +
+      '[Yazzoki] ↑ URL detectada automaticamente (IP público + porta alocada).' +
         ' Confirme no painel (página do servidor → alocação) que este é o' +
-        ' mesmo IP:PORTA antes de usar no MatrixApp (API_BASE_URL).',
+        ' mesmo IP:PORTA antes de usar no YazzokiApp (API_BASE_URL).',
     );
-    console.log(`[MATRIX] Health check: http://${ip}:${env.port}/health`);
+    console.log(`[Yazzoki] Health check: http://${ip}:${env.port}/health`);
   } else {
-    console.log('[MATRIX] URL: não foi possível detectar o IP público.');
+    console.log('[Yazzoki] URL: não foi possível detectar o IP público.');
     console.log(
-      '[MATRIX] Copie o endereço IP:PORTA da alocação na página do servidor' +
+      '[Yazzoki] Copie o endereço IP:PORTA da alocação na página do servidor' +
         ' no painel — a URL da API é http://IP:PORTA (ex.: http://123.45.67.89:4316).',
     );
   }

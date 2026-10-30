@@ -118,7 +118,7 @@ describe('Auth — Unicode nicknames', () => {
     'Leonardo 🔥',
     '★Leonardo★',
     'Leonardo.exe',
-    'MATRIX ⚡',
+    'Yazzoki ⚡',
     'LΞONΛRDO',
     '𝕷𝖊𝖔𝖓𝖆𝖗𝖉𝖔',
     'José Àçéntos',

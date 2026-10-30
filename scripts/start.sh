@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────
-# MATRIX API — one-shot bootstrap + start (SQLite edition)
+# Yazzoki API — one-shot bootstrap + start (SQLite edition)
 #
 # `npm start` (the Pterodactyl/Bronxys startup command) runs this. It is the
 # ONLY command needed to bring the API online on a fresh host, and it stays
@@ -21,7 +21,7 @@
 #
 # Every step is idempotent. No loops, no background processes, no --force,
 # no --legacy-peer-deps. No PostgreSQL, no psql, no external database.
-# The SQLite file at data/matrix.db is NEVER deleted or reset by this script.
+# The SQLite file at data/yazzoki.db is NEVER deleted or reset by this script.
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -42,11 +42,11 @@ GENERATED="src/generated"
 APP_ENTRY="dist/src/app.js"
 SEED_ENTRY="dist/prisma/seed.js"
 DATA_DIR="data"
-DB_FILE="$DATA_DIR/matrix.db"
+DB_FILE="$DATA_DIR/yazzoki.db"
 
 # ── Prisma helpers (Termux-safe generate/migrate) ──────────────
-# Sourced unconditionally: it defines matrix_is_termux / matrix_prisma_generate
-# / matrix_migrate, used by the generate and migration steps below.
+# Sourced unconditionally: it defines yazzoki_is_termux / yazzoki_prisma_generate
+# / yazzoki_migrate, used by the generate and migration steps below.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./lib-prisma.sh
 . "$SCRIPT_DIR/lib-prisma.sh"
@@ -79,7 +79,7 @@ node_has_argon2() { [ "$NODE_MAJOR" -gt 24 ] || { [ "$NODE_MAJOR" -eq 24 ] && [ 
 # 1. DIAGNÓSTICO DE AMBIENTE
 # ══════════════════════════════════════════════════════════════
 echo "═══════════════════════════════════════════════════════════════"
-echo "  MATRIX API — diagnóstico de ambiente"
+echo "  Yazzoki API — diagnóstico de ambiente"
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Data/hora      : $(date 2>/dev/null || echo '?')"
 echo "  Diretório      : $(pwd)"
@@ -183,7 +183,7 @@ echo "  Porta          : $PORT (obtida do ambiente)"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
-echo "  MATRIX API — preparando inicialização"
+echo "  Yazzoki API — preparando inicialização"
 echo "═══════════════════════════════════════════════════════════════"
 
 # ── 3. Dependencies ───────────────────────────────────────────
@@ -243,6 +243,16 @@ ok "Argon2 disponível ($argon2_source)"
 # empty (the @fastify/static plugin warns if the directory is missing).
 mkdir -p "$DATA_DIR" uploads
 ok "Diretório de dados pronto: $DATA_DIR/"
+# Rebrand migration: the SQLite file was renamed matrix.db -> yazzoki.db.
+# Move the existing file ONCE so a server already in production keeps all of
+# its data instead of booting an empty database. Idempotent: only runs while
+# the old name exists and the new one does not. Never overwrites, never
+# deletes the source.
+LEGACY_DB_FILE="$DATA_DIR/matrix.db"
+if [ -f "$LEGACY_DB_FILE" ] && [ ! -f "$DB_FILE" ]; then
+  mv "$LEGACY_DB_FILE" "$DB_FILE"
+  ok "Banco legado renomeado: matrix.db → yazzoki.db (dados preservados)"
+fi
 if [ -f "$DB_FILE" ]; then
   ok "Banco SQLite existente detectado: $DB_FILE (dados preservados)"
 else
@@ -272,13 +282,13 @@ fi
 # nem `pip` utilizável — por isso o plano B é baixar os binários ESTÁTICOS
 # oficiais (SHA-256 conferido) para data/bin. Roda ANTES de subir o servidor
 # para o Node já encontrá-los.
-matrix_ensure_media_tools() {
-  export PATH="$MATRIX_MEDIA_BIN_DIR:$PATH"
-  if [ -z "${YT_DLP_PATH:-}" ] && [ -x "$MATRIX_MEDIA_BIN_DIR/yt-dlp" ]; then
-    export YT_DLP_PATH="$MATRIX_MEDIA_BIN_DIR/yt-dlp"
+yazzoki_ensure_media_tools() {
+  export PATH="$YAZZOKI_MEDIA_BIN_DIR:$PATH"
+  if [ -z "${YT_DLP_PATH:-}" ] && [ -x "$YAZZOKI_MEDIA_BIN_DIR/yt-dlp" ]; then
+    export YT_DLP_PATH="$YAZZOKI_MEDIA_BIN_DIR/yt-dlp"
   fi
-  if [ -z "${FFMPEG_PATH:-}" ] && [ -x "$MATRIX_MEDIA_BIN_DIR/ffmpeg" ]; then
-    export FFMPEG_PATH="$MATRIX_MEDIA_BIN_DIR/ffmpeg"
+  if [ -z "${FFMPEG_PATH:-}" ] && [ -x "$YAZZOKI_MEDIA_BIN_DIR/ffmpeg" ]; then
+    export FFMPEG_PATH="$YAZZOKI_MEDIA_BIN_DIR/ffmpeg"
   fi
 
   local need_ytdlp=1 need_ffmpeg=1
@@ -314,18 +324,18 @@ matrix_ensure_media_tools() {
   # 2) Plano B: BINÁRIOS ESTÁTICOS (sem root, sem Python).
   if [ "$need_ytdlp" = 1 ]; then
     log "Baixando yt-dlp estático (sem gerenciador de pacotes)"
-    matrix_fetch_ytdlp || true
-    [ -x "$MATRIX_MEDIA_BIN_DIR/yt-dlp" ] && export YT_DLP_PATH="$MATRIX_MEDIA_BIN_DIR/yt-dlp"
+    yazzoki_fetch_ytdlp || true
+    [ -x "$YAZZOKI_MEDIA_BIN_DIR/yt-dlp" ] && export YT_DLP_PATH="$YAZZOKI_MEDIA_BIN_DIR/yt-dlp"
   fi
   if [ "$need_ffmpeg" = 1 ]; then
-    matrix_fetch_ffmpeg || true
-    [ -x "$MATRIX_MEDIA_BIN_DIR/ffmpeg" ] && export FFMPEG_PATH="$MATRIX_MEDIA_BIN_DIR/ffmpeg"
+    yazzoki_fetch_ffmpeg || true
+    [ -x "$YAZZOKI_MEDIA_BIN_DIR/ffmpeg" ] && export FFMPEG_PATH="$YAZZOKI_MEDIA_BIN_DIR/ffmpeg"
   fi
 
-  if [ -x "$MATRIX_MEDIA_BIN_DIR/yt-dlp" ] \
+  if [ -x "$YAZZOKI_MEDIA_BIN_DIR/yt-dlp" ] \
     || command -v yt-dlp >/dev/null 2>&1 \
     || python3 -m yt_dlp --version >/dev/null 2>&1; then
-    if [ -x "$MATRIX_MEDIA_BIN_DIR/ffmpeg" ] \
+    if [ -x "$YAZZOKI_MEDIA_BIN_DIR/ffmpeg" ] \
       || { command -v ffmpeg >/dev/null 2>&1 && ffmpeg -version >/dev/null 2>&1; }; then
       ok "Música do perfil: yt-dlp + ffmpeg prontos"
     else
@@ -335,7 +345,7 @@ matrix_ensure_media_tools() {
     warn "Música do perfil indisponível: yt-dlp ausente (rode: npm run doctor)"
   fi
 }
-matrix_ensure_media_tools
+yazzoki_ensure_media_tools
 
 # ── 5. Database URL (SQLite, absolute path) ───────────────────
 # The schema uses a local SQLite file. DATABASE_URL is OPTIONAL: if the
@@ -358,7 +368,7 @@ needs_prisma_generate() {
 }
 if needs_prisma_generate; then
   log "Gerando cliente Prisma"
-  matrix_prisma_generate "$PRISMA" .
+  yazzoki_prisma_generate "$PRISMA" .
   ok "Cliente Prisma gerado"
 else
   ok "Cliente Prisma já gerado e atualizado (generate ignorado)"
@@ -428,7 +438,7 @@ if [ "$VALIDATION_ERRORS" -gt 0 ]; then
   err "  A porta é obtida automaticamente do ambiente — NÃO precisa"
   err "  configurar PORT manualmente."
   err "  Opcionais: NODE_ENV=production, CORS_ORIGIN, AI_API_KEY/AI_PROVIDER."
-  err "  O banco é SQLite local (data/matrix.db) — NÃO precisa de DATABASE_URL."
+  err "  O banco é SQLite local (data/yazzoki.db) — NÃO precisa de DATABASE_URL."
   err "=============================================================="
   die "Configuração incompleta — defina JWT_SECRET no painel e reinicie."
 fi
@@ -436,16 +446,16 @@ ok "Todas as variáveis obrigatórias estão configuradas"
 
 # ── 8. Migrations (creates the SQLite DB on first boot) ───────
 # Non-destructive: only pending migrations are applied, and the DB is NEVER
-# reset/deleted. On a fresh host it creates data/matrix.db with the full
+# reset/deleted. On a fresh host it creates data/yazzoki.db with the full
 # schema; on later boots it is a fast no-op.
 # Termux/Android → offline node:sqlite runner (the Prisma CLI cannot run its
 # native schema engine there). Other systems → `prisma migrate deploy`.
-if matrix_is_termux; then
+if yazzoki_is_termux; then
   log "Aplicando migrations (runner node:sqlite — Termux, sem schema engine)"
 else
   log "Aplicando migrations (prisma migrate deploy — não destrutivo)"
 fi
-matrix_migrate "$PRISMA" .
+yazzoki_migrate "$PRISMA" .
 ok "Migrations aplicadas"
 
 # SQLite health check: open the EXACT file the server will use and read it.
@@ -498,7 +508,7 @@ fi
 # ── 11. Start server ──────────────────────────────────────────
 # `exec` replaces the shell with the Node process so it becomes PID 1 (the
 # container's main process) and receives signals for graceful shutdown.
-# The [MATRIX] startup banner (ambiente/banco/porta/host) is printed by the
+# The [Yazzoki] startup banner (ambiente/banco/porta/host) is printed by the
 # app itself (dist/src/app.js) so it also appears with `npm run start:server`.
 info "Entrypoint: node $APP_ENTRY"
 ok "Bootstrap concluído — iniciando servidor"

@@ -12,7 +12,7 @@ const LEVELS = [
   { id: 2, name: 'MEMBRO', minXp: 500, color: '#008CFF' },
   { id: 3, name: 'VETERANO', minXp: 2500, color: '#0066FF' },
   { id: 4, name: 'ELITE', minXp: 10000, color: '#003B8F' },
-  { id: 5, name: 'LENDA MATRIX', minXp: 50000, color: '#00FF88' },
+  { id: 5, name: 'LENDA YAZZOKI', minXp: 50000, color: '#00FF88' },
 ];
 
 // ── Profile frames (AVATAR_FRAME) ────────────────────────────
@@ -23,13 +23,13 @@ const LEVELS = [
 // entries (price 0): equipping validates id/active/type only — ownership is a
 // future collectible concern, the same rule NAME_COLOR already uses.
 const GAMES = [
-  { slug: 'quiz', name: 'MATRIX Quiz', description: 'Teste seu conhecimento.' },
+  { slug: 'quiz', name: 'Yazzoki Quiz', description: 'Teste seu conhecimento.' },
   { slug: 'detective', name: 'Detetive', description: 'Resolva o mistério.' },
   { slug: 'enigmas', name: 'Enigmas', description: 'Decifre os enigmas.' },
 ];
 
 async function main() {
-  console.log('🌱 Seeding MATRIX database…');
+  console.log('🌱 Seeding Yazzoki database…');
 
   // Guard: never wipe a database that already has real users. This makes the
   // seed safe to run automatically on every start without destroying data.
@@ -48,7 +48,7 @@ async function main() {
     prisma.musicVote, prisma.playlistTrack, prisma.playlist, prisma.track,
     prisma.eventReward, prisma.eventParticipant, prisma.event,
     prisma.userBadge, prisma.badge, prisma.userAchievement, prisma.achievement,
-    prisma.coinTransaction, prisma.matrixCoin, prisma.xpTransaction, prisma.level,
+    prisma.coinTransaction, prisma.yazzokiCoin, prisma.xpTransaction, prisma.level,
     prisma.callParticipant, prisma.callRoom,
     prisma.appConfig,
     prisma.comment, prisma.like, prisma.post, prisma.session, prisma.user,
@@ -84,7 +84,7 @@ async function main() {
         passwordHash: password,
         recoveryCodeHash: hashRecoveryCode(generateRecoveryCode()),
         role: 'OWNER',
-        bio: 'Fundador do MATRIX \u{1F4A4} \u2014 construindo o futuro cronol\u00f3gico.',
+        bio: 'Fundador do Yazzoki \u{1F4A4} \u2014 construindo o futuro cronol\u00f3gico.',
         avatarUrl: 'https://i.pravatar.cc/300?img=12',
       },
       {
@@ -116,14 +116,14 @@ async function main() {
     prisma.post.create({
       data: {
         userId: leonardo.id,
-        text: 'Bem-vindos ao MATRIX 💤 — a rede social do futuro cronológico. Tudo aqui é persistente agora!',
+        text: 'Bem-vindos ao Yazzoki 💤 — a rede social do futuro cronológico. Tudo aqui é persistente agora!',
         imageUrl: null,
       },
     }),
     prisma.post.create({
       data: {
         userId: maria.id,
-        text: 'Adorando a estética cyberpunk dessa nova versão. 🔮✨ #matrix',
+        text: 'Adorando a estética cyberpunk dessa nova versão. 🔮✨ #yazzoki',
         imageUrl: null,
       },
     }),

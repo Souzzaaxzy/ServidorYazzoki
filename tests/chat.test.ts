@@ -849,14 +849,14 @@ describe('Private chat — mídia (foto/vídeo)', () => {
       headers: { authorization: `Bearer ${a.accessToken}` },
       payload: {
         kind: 'image',
-        url: 'https://cdn.matrix.app/static/img1.png',
+        url: 'https://cdn.yazzoki.app/static/img1.png',
         replyToMessageId: baseId,
       },
     });
     expect(imgRes.statusCode).toBe(201);
     const img = JSON.parse(imgRes.payload).message;
     expect(img.type).toBe('image');
-    expect(img.imageUrl).toBe('https://cdn.matrix.app/static/img1.png');
+    expect(img.imageUrl).toBe('https://cdn.yazzoki.app/static/img1.png');
     expect(img.replyTo?.id).toBe(baseId);
 
     // Video message.
@@ -866,13 +866,13 @@ describe('Private chat — mídia (foto/vídeo)', () => {
       headers: { authorization: `Bearer ${a.accessToken}` },
       payload: {
         kind: 'video',
-        url: 'https://cdn.matrix.app/static/video/v1.mp4',
+        url: 'https://cdn.yazzoki.app/static/video/v1.mp4',
       },
     });
     expect(vidRes.statusCode).toBe(201);
     const vid = JSON.parse(vidRes.payload).message;
     expect(vid.type).toBe('video');
-    expect(vid.videoUrl).toBe('https://cdn.matrix.app/static/video/v1.mp4');
+    expect(vid.videoUrl).toBe('https://cdn.yazzoki.app/static/video/v1.mp4');
 
     // The peer reads the page and sees both media messages.
     const page = await server.inject({

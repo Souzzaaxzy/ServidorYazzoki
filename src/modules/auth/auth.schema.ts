@@ -21,7 +21,7 @@ export const refreshSchema = z.object({
 });
 
 export const recoverSchema = z.object({
-  identifier: z.string().trim().min(1, 'Informe usuário ou MATRIX ID'),
+  identifier: z.string().trim().min(1, 'Informe usuário ou Yazzoki ID'),
   recoveryCode: z.string().trim().min(1, 'Código de recuperação obrigatório'),
   newPassword: z
     .string()

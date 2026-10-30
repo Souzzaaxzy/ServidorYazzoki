@@ -934,8 +934,8 @@ ok() { echo "OK:$*"; }
 warn() { echo "WARN:$*"; }
 log() { echo "LOG:$*"; }
 die() { echo "DIE:$*"; exit 1; }
-matrix_is_termux() { return 1; }
-MATRIX_MEDIA_BIN_DIR="$PWD/tests/fixtures/no-media-bin"
+yazzoki_is_termux() { return 1; }
+YAZZOKI_MEDIA_BIN_DIR="$PWD/tests/fixtures/no-media-bin"
 ${fn}
 ensure_media_tools
 `;
@@ -972,8 +972,8 @@ ok() { echo "OK:$*"; }
 warn() { echo "WARN:$*"; }
 log() { echo "LOG:$*"; }
 die() { echo "DIE:$*"; exit 1; }
-matrix_is_termux() { return 1; }
-MATRIX_MEDIA_BIN_DIR="$PWD/tests/fixtures/no-media-bin"
+yazzoki_is_termux() { return 1; }
+YAZZOKI_MEDIA_BIN_DIR="$PWD/tests/fixtures/no-media-bin"
 ${fn}
 ensure_media_tools
 `;
@@ -1604,19 +1604,19 @@ describe('static media binaries', () => {
 
   it('exposes the fetch helpers', async () => {
     const src = await fs.readFile(lib, 'utf8');
-    expect(src).toContain('matrix_fetch_ytdlp');
-    expect(src).toContain('matrix_fetch_ffmpeg');
+    expect(src).toContain('yazzoki_fetch_ytdlp');
+    expect(src).toContain('yazzoki_fetch_ffmpeg');
     // O SHA-256 é OBRIGATÓRIO antes de executar qualquer coisa baixada.
-    expect(src).toContain('matrix_verify_sha256');
+    expect(src).toContain('yazzoki_verify_sha256');
     expect(src).toMatch(/SHA-256.*NÃO confere/s);
   });
 
   it('start.sh falls back to the static download', async () => {
     const src = await fs.readFile(path.resolve(process.cwd(), 'start.sh'), 'utf8');
-    expect(src).toContain('matrix_fetch_ytdlp');
-    expect(src).toContain('matrix_fetch_ffmpeg');
+    expect(src).toContain('yazzoki_fetch_ytdlp');
+    expect(src).toContain('yazzoki_fetch_ffmpeg');
     // Os binários baixados ficam em data/bin e entram no PATH.
-    expect(src).toContain('MATRIX_MEDIA_BIN_DIR');
+    expect(src).toContain('YAZZOKI_MEDIA_BIN_DIR');
   });
 
   it('the server LOOKS for binaries in data/bin', async () => {

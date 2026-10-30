@@ -1,9 +1,9 @@
 import { prisma } from '../config/prisma.js';
 import type { CoinReason, CoinTransactionType } from '../types/enums.js';
 
-// ── Matrix Coins ledger ────────────────────────────────────────
+// ── Yazzoki Coins ledger ────────────────────────────────────────
 // Coins are a virtual currency tracked as an append-only ledger. The
-// `matrix_coins` row holds a cached balance but the source of truth is the
+// `yazzoki_coins` row holds a cached balance but the source of truth is the
 // SUM of coin_transactions. The client can never mint coins — only the
 // server, via this module, records movements and enforces non-negative
 // balances on spends.
@@ -36,7 +36,7 @@ export async function grantCoins(input: GrantCoinsInput): Promise<number> {
   });
 
   const newBalance = await getCoinBalance(input.userId);
-  await prisma.matrixCoin.upsert({
+  await prisma.yazzokiCoin.upsert({
     where: { userId: input.userId },
     update: { balance: newBalance },
     create: { userId: input.userId, balance: newBalance },
@@ -56,7 +56,7 @@ export class InsufficientCoinsError extends Error {
   readonly balance: number;
   readonly needed: number;
   constructor(balance: number, needed: number) {
-    super('Saldo insuficiente de Matrix Coins.');
+    super('Saldo insuficiente de Yazzoki Coins.');
     this.name = 'InsufficientCoinsError';
     this.balance = balance;
     this.needed = needed;

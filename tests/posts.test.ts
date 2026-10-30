@@ -187,7 +187,7 @@ describe('Posts — vídeos', () => {
   }
 
   function multipartBody(bytes: Buffer, filename: string): Buffer {
-    const boundary = '----matrix-video-test-boundary-x7';
+    const boundary = '----yazzoki-video-test-boundary-x7';
     const preamble = Buffer.from(
       `--${boundary}\r\n` +
         'Content-Disposition: form-data; name="file"; ' +
@@ -208,7 +208,7 @@ describe('Posts — vídeos', () => {
       url: '/api/uploads/video',
       headers: {
         authorization: `Bearer ${u.accessToken}`,
-        'content-type': 'multipart/form-data; boundary=----matrix-video-test-boundary-x7',
+        'content-type': 'multipart/form-data; boundary=----yazzoki-video-test-boundary-x7',
       },
       payload: multipartBody(mp4Fixture(), 'clip.mp4'),
     });
@@ -246,7 +246,7 @@ describe('Posts — vídeos', () => {
       url: '/api/uploads/video',
       headers: {
         authorization: `Bearer ${u.accessToken}`,
-        'content-type': 'multipart/form-data; boundary=----matrix-video-test-boundary-x7',
+        'content-type': 'multipart/form-data; boundary=----yazzoki-video-test-boundary-x7',
       },
       payload: multipartBody(Buffer.from('não é um mp4 de verdade...', 'utf8'), 'fake.mp4'),
     });
@@ -324,7 +324,7 @@ describe('Posts — vídeos', () => {
       url: '/api/uploads/video',
       headers: {
         authorization: `Bearer ${u.accessToken}`,
-        'content-type': 'multipart/form-data; boundary=----matrix-video-test-boundary-x7',
+        'content-type': 'multipart/form-data; boundary=----yazzoki-video-test-boundary-x7',
       },
       payload: multipartBody(mp4Fixture(), 'del.mp4'),
     });

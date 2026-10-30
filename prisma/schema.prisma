@@ -1,4 +1,4 @@
-// MATRIX 💤 — database schema (Prisma)
+// Yazzoki 💤 — database schema (Prisma)
 // See migrations/ for the versioned history.
 //
 // Design principles (Phase 3):
@@ -6,7 +6,7 @@
 //   All relations use `userId`/`id`, never `username`.
 // - No email/phone: auth is username + password only.
 // - Password hashing uses Argon2id; recovery codes are hashed too.
-// - Gamification: XP and Matrix Coins are append-only ledgers
+// - Gamification: XP and Yazzoki Coins are append-only ledgers
 //   (xp_transactions / coin_transactions) for full auditability.
 // - Customization: the APK renders generic item "types"; the server owns
 //   which items exist, their rarity, pricing and availability. Adding a new
@@ -26,7 +26,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  // SQLite file lives at <project root>/data/matrix.db (see scripts/start.sh,
+  // SQLite file lives at <project root>/data/yazzoki.db (see scripts/start.sh,
   // which creates data/ on boot). DATABASE_URL is optional in production: if
   // the panel does not set it, the app/start.sh default to this file path.
   // Tests override DATABASE_URL to point at a throwaway file (see .env.test).
@@ -96,7 +96,7 @@ model User {
 
   xpTransactions    XpTransaction[]
   coinTransactions  CoinTransaction[]
-  userCoins         MatrixCoin?
+  userCoins         YazzokiCoin?
   userAchievements  UserAchievement[]
   userBadges        UserBadge[]
   eventParticipants EventParticipant[]
@@ -687,7 +687,7 @@ model Level {
   @@map("levels")
 }
 
-model MatrixCoin {
+model YazzokiCoin {
   userId    String   @id
   balance   Int      @default(0)
   updatedAt DateTime @updatedAt
@@ -695,10 +695,10 @@ model MatrixCoin {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("matrix_coins")
+  @@map("yazzoki_coins")
 }
 
-// Append-only ledger of every Matrix Coin movement. The balance is the
+// Append-only ledger of every Yazzoki Coin movement. The balance is the
 // `SUM(amount)` of all transactions for a user.
 model CoinTransaction {
   id        String   @id @default(cuid())
@@ -821,7 +821,7 @@ model EventReward {
   @@map("event_rewards")
 }
 
-// ── Matrix Music ──────────────────────────────────────────────
+// ── Yazzoki Music ──────────────────────────────────────────────
 // No commercial audio is stored. Tracks reference an external provider
 // (e.g. a licensed streaming API) via provider + externalId/externalUrl.
 
@@ -973,7 +973,7 @@ model GameResult {
   @@map("game_results")
 }
 
-// ── Matrix Calls (contracts only — no media transport yet) ─────
+// ── Yazzoki Calls (contracts only — no media transport yet) ─────
 
 model CallRoom {
   id        String    @id @default(cuid())
@@ -1014,7 +1014,7 @@ model AppConfig {
 }
 
 // ── Stickers (figurinhas) ────────────────────────────────────
-// Native sticker collection, WhatsApp-style UX built on the MATRIX stack:
+// Native sticker collection, WhatsApp-style UX built on the Yazzoki stack:
 // packages (server-owned catalog), per-user installs, favorites and recents.
 // Messages reuse the existing `Message` table with type="sticker" plus
 // stickerUrl/stickerId/stickerPackageId columns — no parallel message system.
@@ -1027,10 +1027,10 @@ model AppConfig {
 model StickerPackage {
   id          String   @id @default(cuid())
   name        String
-  // Short code used for stable package ids in seed/tests (e.g. "matrix").
+  // Short code used for stable package ids in seed/tests (e.g. "yazzoki").
   slug        String   @unique
   description String   @default("")
-  author      String   @default("MATRIX")
+  author      String   @default("Yazzoki")
   iconUrl     String
   // Active packages are installable/visible; deactivated ones are kept for
   // history (old messages/favorites keep rendering) but hidden from install.

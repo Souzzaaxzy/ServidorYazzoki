@@ -182,7 +182,7 @@ export async function fetchStickerlyPack(code: string): Promise<StickerlyPack> {
 
   if (stickers.length === 0) {
     throw ApiError.notFound(
-      'Este pacote não tem figurinhas compatíveis com o MATRIX.',
+      'Este pacote não tem figurinhas compatíveis com o Yazzoki.',
     );
   }
 

@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/errors.js';
 
-// ── Matrix Calls (contracts only) ─────────────────────────────
+// ── Yazzoki Calls (contracts only) ─────────────────────────────
 // This phase defines the data model and lifecycle for call rooms and
 // participants. The actual media transport (WebRTC/SFU) is intentionally
 // left for a future phase — only the room/participant contracts exist here.

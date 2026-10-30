@@ -166,7 +166,7 @@ export async function getCurrentUser(userId: string) {
 }
 
 // ── Account recovery ────────────────────────────────────────────
-// Recovers an account using a nickname/MATRIX ID + recovery code + new
+// Recovers an account using a nickname/Yazzoki ID + recovery code + new
 // password. Brute-force protection (attempt tracking + lockout) is enforced
 // by the `checkRecoveryAttempt`/`recordRecoveryFailure` helpers wired into
 // the route. This function deliberately performs a constant-time-ish hash
@@ -182,7 +182,7 @@ export async function recoverAccount(
   }
 
   // The identifier is the nickname (case-insensitive) OR the public `#id`
-  // (the recover form already promised "usuário ou MATRIX ID").
+  // (the recover form already promised "usuário ou Yazzoki ID").
   const publicId = parsePublicId(input.identifier);
   const user = await prisma.user.findFirst({
     where:

@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # ──────────────────────────────────────────────────────────────
-# MATRIX API — instalador para Termux (Android ARM64, SEM proot/Ubuntu)
+# Yazzoki API — instalador para Termux (Android ARM64, SEM proot/Ubuntu)
 #
 # O que este script faz, em ordem:
 #   1. confere o ambiente (Termux/Android, arquitetura, Node, npm);
@@ -42,7 +42,7 @@ warn() { printf '\033[1;33m[WARN] %s\033[0m\n' "$*" >&2; }
 die()  { printf '\033[1;31m[ERROR] %s\033[0m\n' "$*" >&2; exit 1; }
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "  MATRIX API — instalação nativa no Termux"
+echo "  Yazzoki API — instalação nativa no Termux"
 echo "═══════════════════════════════════════════════════════════════"
 
 # ── 1. Ambiente ────────────────────────────────────────────────
@@ -128,7 +128,7 @@ ok "Dependências instaladas"
 
 # ── 4. Cliente Prisma + build ──────────────────────────────────
 mkdir -p data
-export DATABASE_URL="${DATABASE_URL:-file:$(pwd)/data/matrix.db}"
+export DATABASE_URL="${DATABASE_URL:-file:$(pwd)/data/yazzoki.db}"
 
 # Prisma helpers: on Termux, generate runs offline (the CLI would otherwise
 # download an unusable native schema-engine) and migrations use the node:sqlite
@@ -136,7 +136,7 @@ export DATABASE_URL="${DATABASE_URL:-file:$(pwd)/data/matrix.db}"
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/lib-prisma.sh"
 
 log "Gerando o cliente Prisma (engine JS/WASM — sem binário nativo)"
-matrix_prisma_generate ./node_modules/.bin/prisma .
+yazzoki_prisma_generate ./node_modules/.bin/prisma .
 ok "Cliente Prisma gerado"
 
 log "Compilando TypeScript"
@@ -145,7 +145,7 @@ ok "Build concluído"
 
 # ── 5. Banco de dados ──────────────────────────────────────────
 log "Aplicando migrations no SQLite (runner node:sqlite — não destrutivo)"
-matrix_migrate ./node_modules/.bin/prisma .
+yazzoki_migrate ./node_modules/.bin/prisma .
 ok "Banco pronto: $DATABASE_URL"
 
 echo "═══════════════════════════════════════════════════════════════"

@@ -19,7 +19,7 @@ async function seedPost(userId: string) {
 describe('Likes', () => {
   it('rejects a bodyless POST carrying a JSON content-type with 400 (not 500)', async () => {
     // Regression: a client that globally sets 'Content-Type: application/json'
-    // and then POSTs without a body (the old MatrixApp like bug) must get a
+    // and then POSTs without a body (the old YazzokiApp like bug) must get a
     // clear 400, never an opaque 500.
     const author = await createAndLoginUser(server, { nickname: 'likeauthor0' });
     const liker = await createAndLoginUser(server, { nickname: 'liker0' });

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────
-# MATRIX API — verificação de ambiente ("doctor")
+# Yazzoki API — verificação de ambiente ("doctor")
 #
 # Confere se a máquina cumpre os requisitos e informa exatamente o que falta,
 # sem alterar nada. Funciona no Termux/Android e em Linux.
@@ -20,7 +20,7 @@ PROBLEMS=0
 fail() { bad "$1"; PROBLEMS=$((PROBLEMS + 1)); }
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "  MATRIX API — verificação de ambiente"
+echo "  Yazzoki API — verificação de ambiente"
 echo "═══════════════════════════════════════════════════════════════"
 
 hdr "Sistema"
@@ -68,7 +68,7 @@ hdr "Música do perfil (yt-dlp + ffmpeg)"
 #
 # Os binários baixados pelo projeto (data/bin) contam como instalados: em
 # container sem root é o ÚNICO caminho possível.
-MEDIA_BIN_DIR="${MATRIX_MEDIA_BIN_DIR:-$PWD/data/bin}"
+MEDIA_BIN_DIR="${YAZZOKI_MEDIA_BIN_DIR:-$PWD/data/bin}"
 YTDLP_FOUND=""
 if [ -n "${YT_DLP_PATH:-}" ] && [ -x "${YT_DLP_PATH:-}" ]; then
   YTDLP_FOUND="$YT_DLP_PATH"
@@ -175,7 +175,7 @@ if command -v node >/dev/null 2>&1 && [ -f prisma/migrations/migration_lock.toml
 fi
 
 hdr "Banco de dados (SQLite)"
-DB_FILE="data/matrix.db"
+DB_FILE="data/yazzoki.db"
 if [ -f "$DB_FILE" ]; then
   ok "Arquivo do banco: $DB_FILE"
   if command -v node >/dev/null 2>&1; then
@@ -206,7 +206,7 @@ else
   warn "JWT_SECRET ausente — o start.sh gera um segredo persistente no 1º boot."
 fi
 ok "PORT = ${PORT:-${SERVER_PORT:-3000 (padrão)}}"
-[ -n "${DATABASE_URL:-}" ] && ok "DATABASE_URL = $DATABASE_URL" || ok "DATABASE_URL = padrão (file:<cwd>/data/matrix.db)"
+[ -n "${DATABASE_URL:-}" ] && ok "DATABASE_URL = $DATABASE_URL" || ok "DATABASE_URL = padrão (file:<cwd>/data/yazzoki.db)"
 
 echo
 if [ "$PROBLEMS" -eq 0 ]; then

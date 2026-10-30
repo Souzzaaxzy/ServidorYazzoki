@@ -114,7 +114,7 @@ describe('presence over the real WebSocket', () => {
     expect(await listOf()).toBe(true);
 
     // App em SEGUNDO PLANO (o socket continua aberto para receber push, mas o
-    // usuário não está olhando o MATRIX) → offline.
+    // usuário não está olhando o Yazzoki) → offline.
     socket.send(JSON.stringify({ kind: 'away' }));
     await wait(300);
     expect(await listOf()).toBe(false);

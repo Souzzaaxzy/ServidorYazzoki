@@ -1,14 +1,14 @@
 # ServidorMtx — Repository Notes
 
 ## Project
-MATRIX 💤 backend — Node.js + Fastify + Prisma + **SQLite** (migrated from
+Yazzoki 💤 backend — Node.js + Fastify + Prisma + **SQLite** (migrated from
 PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
 
 ## Database: SQLite 
 - **Provider**: `sqlite` in `prisma/schema.prisma`. No PostgreSQL/psql/external DB.
-- **DB file**: `data/matrix.db` (gitignored, created on first boot, NEVER deleted).
+- **DB file**: `data/yazzoki.db` (gitignored, created on first boot, NEVER deleted).
 - **DATABASE_URL**: OPTIONAL. Defaults to an **absolute** path
-  `file:<cwd>/data/matrix.db` (start.sh) / `file:/app/data/matrix.db` (container).
+  `file:<cwd>/data/yazzoki.db` (start.sh) / `file:/app/data/yazzoki.db` (container).
   Use ABSOLUTE paths — Prisma resolves `file:` relative to `schema.prisma`, which
   differs between the CLI (`prisma/`), dev client (`src/generated`), and compiled
   client (`dist/src/generated`). Absolute paths remove all ambiguity.
@@ -25,7 +25,7 @@ PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
 - **search.service.ts**: no `mode: 'insensitive'` (SQLite LIKE is case-insensitive).
 
 ## Environment
-- Node 22, npm (10+ or 12). JDK/Flutter not needed here (Flutter is `MatrixApp`).
+- Node 22, npm (10+ or 12). JDK/Flutter not needed here (Flutter is `YazzokiApp`).
 - `npm install` is clean (no ERESOLVE): ESLint 9 ecosystem — `@eslint/js@^9.17.0`,
   `eslint@^9.17.0`, `typescript-eslint@^8.67.0`. (Was `@eslint/js@^10.0.1` —
   fixed in commit 2e6d015.)
@@ -44,7 +44,7 @@ PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
 - **start (production)**: `npm start` → `scripts/start.sh` (self-provisions:
   diagnostics → .env optional → deps → data/ dir → SQLite → prisma generate →
   validate → migrate deploy → build → seed (if empty) → `exec node dist/src/app.js`)
-- docker: `docker compose up -d --build` (no DB service, SQLite in `matrixdata` volume)
+- docker: `docker compose up -d --build` (no DB service, SQLite in `yazzokidata` volume)
 
 ## Architecture
 - `src/config/` — env.ts, prisma.ts (shared PrismaClient), AppState.
@@ -174,7 +174,7 @@ PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
     migration aborts. Do not remove that option.
   - `prisma generate` works OFFLINE if `PRISMA_SCHEMA_ENGINE_BINARY` points at
     any existing file (the engine is not executed for generate) — that is what
-    `scripts/lib-prisma.sh::matrix_prisma_generate` does on Termux.
+    `scripts/lib-prisma.sh::yazzoki_prisma_generate` does on Termux.
   - `PRISMA_GENERATE_NO_ENGINE=1` is NOT an option: it produces a client that
     refuses driver adapters (P2038).
   - Never use `prisma migrate reset` / `db push` here (destructive / drifts from
@@ -186,7 +186,7 @@ PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
   `package.json` engines reflects 22.5.
 - DateTime compatibility is CRITICAL: Prisma's native SQLite driver stored
   DateTime as epoch-ms INTEGER. The adapter is created with
-  `{ timestampFormat: 'unixepoch-ms' }` so existing data/matrix.db files keep
+  `{ timestampFormat: 'unixepoch-ms' }` so existing data/yazzoki.db files keep
   working byte-for-byte (verified against a DB written by Prisma 5).
 - `src/config/prisma.ts` deliberately does NOT import `src/config/env.ts`:
   importing it would snapshot `process.env` earlier than before and break
@@ -320,7 +320,7 @@ PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
   **O SHA-256 é OBRIGATÓRIO**: sem o arquivo de somas oficial, ou se ele não
   conferir, o download é DESCARTADO e nunca executado. O binário também é
   executado uma vez (`--version`) antes de ser aceito.
-  `MATRIX_MEDIA_BIN_DIR` muda o destino; `YT_NO_FFMPEG=1` pula o ffmpeg.
+  `YAZZOKI_MEDIA_BIN_DIR` muda o destino; `YT_NO_FFMPEG=1` pula o ffmpeg.
 - **O servidor PRECISA achar `data/bin`**: `augmentedPath()` e
   `findFfmpegDir()` incluem `data/bin` entre os candidatos — senão o download
   seria inútil (o Node não veria o que o start.sh baixou).
@@ -345,7 +345,7 @@ PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
   placeholder.
 - Optional vars: NODE_ENV, CORS_ORIGIN, AI_API_KEY/AI_PROVIDER (absent key →
   Akame mock provider; API keeps running).
-- Startup banner: app.ts prints `[MATRIX] ...` lines (ambiente/banco/porta/host/
+- Startup banner: app.ts prints `[Yazzoki] ...` lines (ambiente/banco/porta/host/
   SQLite conectado/iniciada). `GET /health` → 200 `{status, service, database}`.
 - SQLite DB file must NEVER be committed (.gitignore: `data/*.db*`).
 - `argon2` (native) is required for password hashing — verify it loads on the host.
@@ -358,7 +358,7 @@ PostgreSQL). Runs on Pterodactyl/Bronxys via `npm start` (self-provisions).
 - HTTPS only if the panel provides a domain/proxy with valid SSL — never
   invent `https://` for a raw IP:port. No tunnels (a trycloudflare URL was
   previously used and removed — see CONEXAO_APP.md).
-- MatrixApp reads the same URL via `API_BASE_URL` (dart-define / CI secret).
+- YazzokiApp reads the same URL via `API_BASE_URL` (dart-define / CI secret).
 
 ## Git identity
 openhands / openhands@all-hands.dev

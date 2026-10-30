@@ -1,12 +1,12 @@
 # ──────────────────────────────────────────────────────────────
-# MATRIX API — docker-compose (server + SQLite)
+# Yazzoki API — docker-compose (server + SQLite)
 #
 # Uso no host:
 #   1. copie .env.example -> .env e ajuste JWT_SECRET
 #   2. docker compose up -d --build
 #   3. a API responde em http://localhost:3000
 #
-# O banco SQLite persiste no volume `matrixdata` (data/matrix.db). As
+# O banco SQLite persiste no volume `yazzokidata` (data/yazzoki.db). As
 # migrations são aplicadas automaticamente pelo entrypoint do container.
 # Nenhum PostgreSQL / banco externo é necessário.
 # ──────────────────────────────────────────────────────────────
@@ -21,9 +21,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
-      # SQLite local — DATABASE_URL é opcional (defaults to data/matrix.db).
+      # SQLite local — DATABASE_URL é opcional (defaults to data/yazzoki.db).
       # Deixado comentado para o entrypoint usar o padrão local.
-      # DATABASE_URL: file:./data/matrix.db
+      # DATABASE_URL: file:./data/yazzoki.db
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
@@ -34,7 +34,7 @@ services:
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
       STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-}
       STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-}
-      STORAGE_BUCKET: ${STORAGE_BUCKET:-matrix-uploads}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-yazzoki-uploads}
       STORAGE_REGION: ${STORAGE_REGION:-auto}
       STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-true}
       STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL:-}
@@ -42,10 +42,10 @@ services:
       - "${API_PORT:-3000}:3000"
     volumes:
       # Persiste o banco SQLite entre reinícios (NUNCA apagado pelo start).
-      - matrixdata:/app/data
+      - yazzokidata:/app/data
       # Persiste uploads locais entre reinícios.
       - uploads:/app/uploads
 
 volumes:
-  matrixdata:
+  yazzokidata:
   uploads:

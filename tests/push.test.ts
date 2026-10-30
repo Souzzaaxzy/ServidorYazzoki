@@ -36,7 +36,7 @@ describe('Push message composition', () => {
       'joao',
     );
     expect(message.kind).toBe('notification');
-    expect(message.title).toBe('MATRIX');
+    expect(message.title).toBe('Yazzoki');
     expect(message.data.postId).toBe('p9');
     expect(JSON.stringify(message)).toContain('p9');
   });

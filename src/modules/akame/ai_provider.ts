@@ -1,5 +1,5 @@
 // ── AI Provider abstraction (Akame) ────────────────────────────
-// The MATRIX app's assistant, Akame, calls this backend. The provider's API
+// The Yazzoki app's assistant, Akame, calls this backend. The provider's API
 // key lives ONLY on the server (env: AI_API_KEY) and is never shipped in the
 // APK. Swapping the underlying provider (OpenAI, Anthropic, a self-hosted
 // model, …) is a server-side change — the app's contract is unchanged.
@@ -27,7 +27,7 @@ export class MockAIProvider implements AIProvider {
     const replies = [
       'Processando dados da rede… Como posso ajudar?',
       'Conexão estabelecida. Qual sua próxima diretiva?',
-      'Sistemas operacionais. Pergunte algo sobre o MATRIX.',
+      'Sistemas operacionais. Pergunte algo sobre o Yazzoki.',
       'Akame online. Interaja com cuidado.',
     ];
     const idx = (input.prompt.length + (input.history?.length ?? 0)) % replies.length;
@@ -120,7 +120,7 @@ class AnthropicProvider implements AIProvider {
       body: JSON.stringify({
         model: this.model,
         max_tokens: 512,
-        system: input.systemPrompt ?? 'You are Akame, the MATRIX assistant.',
+        system: input.systemPrompt ?? 'You are Akame, the Yazzoki assistant.',
         messages: [
           ...(input.history ?? []).map((h) => ({ role: h.role, content: h.content })),
           { role: 'user', content: input.prompt },

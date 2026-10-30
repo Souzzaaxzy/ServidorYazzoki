@@ -1,11 +1,11 @@
-# ServidorMtx — MATRIX Backend API
+# ServidorMtx — Yazzoki Backend API
 
-Backend do [MATRIX 💤](https://github.com/Souzzaaxzy/MatrixApp) — Node.js + Fastify + Prisma + SQLite.
+Backend do [Yazzoki 💤](https://github.com/Souzzaaxzy/YazzokiApp) — Node.js + Fastify + Prisma + SQLite.
 
 ## Stack
 - **Node 22** + TypeScript (ESM)
 - **Fastify** (HTTP API, todas as rotas em `/api`)
-- **Prisma 5** + **SQLite** (arquivo local em `data/matrix.db` — sem banco externo)
+- **Prisma 5** + **SQLite** (arquivo local em `data/yazzoki.db` — sem banco externo)
 - **Argon2id** para senhas, JWT para sessões
 
 ## Rodar em container (recomendado)
@@ -48,7 +48,7 @@ curl http://localhost:3000/api/config
 | `STORAGE_ENDPOINT` | vazio | S3/R2/MinIO. Vazio = filesystem local |
 | `YT_COOKIES` | vazio | Cookie do YouTube em base64 (anti-bot). Opcional — veja abaixo |
 
-> O banco é **SQLite local** (`data/matrix.db`) — **não existe** `DATABASE_URL`
+> O banco é **SQLite local** (`data/yazzoki.db`) — **não existe** `DATABASE_URL`
 > obrigatória nem qualquer banco externo. A pasta `data/` e o arquivo são
 > criados automaticamente na primeira inicialização.
 
@@ -69,7 +69,7 @@ cp cookies.txt /caminho/do/projeto/data/cookies.txt
 O servidor encontra o arquivo sozinho, restringe a permissão para `600` no
 boot e o repassa ao yt-dlp (numa cópia temporária — o yt-dlp reescreve o
 arquivo de cookies ao sair, então o seu arquivo nunca é modificado). `data/` é
-o mesmo diretório persistente do `matrix.db`, então o arquivo sobrevive a
+o mesmo diretório persistente do `yazzoki.db`, então o arquivo sobrevive a
 reinícios e redeploys.
 
 Alternativas (usadas só se o drop-in não existir): `YT_COOKIES` (conteúdo em
@@ -116,7 +116,7 @@ O `npm start` executa `scripts/start.sh`, que faz automaticamente:
 3. cria o diretório `data/` (armazenamento persistente do SQLite)
 4. gera o cliente Prisma (somente se ausente/desatualizado)
 5. valida o `JWT_SECRET` (única variável obrigatória)
-6. aplica as migrations no SQLite (`data/matrix.db`, criado na 1ª vez)
+6. aplica as migrations no SQLite (`data/yazzoki.db`, criado na 1ª vez)
 7. compila o TypeScript (somente se ausente/desatualizado)
 8. popula o banco (seed) — **só se o banco estiver vazio** (nunca apaga dados)
 9. inicia o servidor compilado (`node dist/src/app.js`) em `0.0.0.0` na porta do ambiente
@@ -167,7 +167,7 @@ Variáveis (aba Variables/Environment):
 | `NODE_ENV` | não | Use `production`. |
 | `CORS_ORIGIN` | não | Default `*`. |
 
-O banco é SQLite local (`data/matrix.db`) — **não** configure `DATABASE_URL`
+O banco é SQLite local (`data/yazzoki.db`) — **não** configure `DATABASE_URL`
 nem PostgreSQL. `data/` precisa ser um diretório **persistente** (fora do
 deploy) para os dados sobreviverem a reinícios.
 
@@ -257,20 +257,20 @@ bash termux/termux-native.sh --no-clone   # reinstala/atualiza e migra
 bash start.sh
 ```
 
-O banco (`data/matrix.db`) **nunca é apagado** e as migrations são
+O banco (`data/yazzoki.db`) **nunca é apagado** e as migrations são
 não destrutivas.
 
 ### Backup e restauração do banco
 
 ```bash
 # Backup (seguro mesmo com a API rodando — usa o backup consistente do SQLite)
-mkdir -p ~/matrix-backup
-node -e "require('node:sqlite').backup(require('node:sqlite').DatabaseSync ? 'data/matrix.db' : '', '')" 2>/dev/null || cp data/matrix.db ~/matrix-backup/matrix-$(date +%F-%H%M).db
+mkdir -p ~/yazzoki-backup
+node -e "require('node:sqlite').backup(require('node:sqlite').DatabaseSync ? 'data/yazzoki.db' : '', '')" 2>/dev/null || cp data/yazzoki.db ~/yazzoki-backup/yazzoki-$(date +%F-%H%M).db
 # Ou, com a API parada:
-cp data/matrix.db ~/matrix-backup/matrix-$(date +%F-%H%M).db
+cp data/yazzoki.db ~/yazzoki-backup/yazzoki-$(date +%F-%H%M).db
 
 # Restauração (com a API parada)
-cp ~/matrix-backup/matrix-AAAAMMDD-HHMM.db data/matrix.db
+cp ~/yazzoki-backup/yazzoki-AAAAMMDD-HHMM.db data/yazzoki.db
 ```
 
 ### Migrações
@@ -320,13 +320,13 @@ persistente em `data/.jwt_secret`), `PORT`/`SERVER_PORT`, `NODE_ENV`,
 ## Pterodactyl / Bronxys (hospedagem em painel)
 
 O servidor roda em painéis Pterodactyl **sem Docker e sem banco externo** —
-o banco é **SQLite local** (`data/matrix.db`), criado automaticamente na
+o banco é **SQLite local** (`data/yazzoki.db`), criado automaticamente na
 primeira inicialização e **nunca apagado** nos reinícios.
 
 ### Importar o egg
 
 1. No painel: **Admin → Eggs → Import Egg** e envie
-   [`pterodactyl/egg-matrix.json`](pterodactyl/egg-matrix.json).
+   [`pterodactyl/egg-yazzoki.json`](pterodactyl/egg-yazzoki.json).
 2. Crie um **Nest** (ou use um existente) e associe o egg.
 3. Crie um **Server** usando esse egg.
 4. Defina `JWT_SECRET` para uma string aleatória longa
@@ -364,14 +364,14 @@ Ao iniciar, o `npm start` imprime um bloco de diagnóstico no console do
 painel (visível na aba "Console") seguido do banner da aplicação:
 
 ```
-[MATRIX] Iniciando API...
-[MATRIX] Ambiente: production
-[MATRIX] Banco: SQLite
-[MATRIX] Banco: data/matrix.db
-[MATRIX] Porta obtida do ambiente: XXXX
-[MATRIX] Host: 0.0.0.0
-[MATRIX] SQLite conectado.
-[MATRIX] API iniciada com sucesso.
+[Yazzoki] Iniciando API...
+[Yazzoki] Ambiente: production
+[Yazzoki] Banco: SQLite
+[Yazzoki] Banco: data/yazzoki.db
+[Yazzoki] Porta obtida do ambiente: XXXX
+[Yazzoki] Host: 0.0.0.0
+[Yazzoki] SQLite conectado.
+[Yazzoki] API iniciada com sucesso.
 ```
 
 `XXXX` é a porta alocada automaticamente pelo painel. Se algo falhar, o
@@ -386,7 +386,7 @@ Pterodactyl/Bronxys (Server → Variables)
 Verifique a saúde da API em `GET /health` (responde `200` com o status do
 banco).
 
-### URL pública da API (conexão com o MatrixApp)
+### URL pública da API (conexão com o YazzokiApp)
 
 A URL pública **não é criada pelo código** — ela vem da infraestrutura do
 painel. O servidor escuta em `0.0.0.0` na porta alocada (`PORT`/
@@ -400,7 +400,7 @@ painel. O servidor escuta em `0.0.0.0` na porta alocada (`PORT`/
    IP+porta sem SSL válido.
 3. Defina `PUBLIC_API_URL` (Server → Variables) com esse valor — o banner
    de startup passa a imprimir a URL e o link do health check.
-4. Configure o **mesmo valor** no MatrixApp (`API_BASE_URL`) e valide com
+4. Configure o **mesmo valor** no YazzokiApp (`API_BASE_URL`) e valide com
    `GET <URL>/health` pelo navegador do celular.
 
 Detalhes completos em [CONEXAO_APP.md](CONEXAO_APP.md).
@@ -422,7 +422,7 @@ src/
 ├── modules/
 │   ├── auth/           username-only, Argon2id, recovery code
 │   ├── posts/ comments/ likes/ users/ search/ uploads/
-│   ├── gamification/   XP + Matrix Coins (server-controlled)
+│   ├── gamification/   XP + Yazzoki Coins (server-controlled)
 │   ├── customization/  personalização dinâmica + inventário
 │   ├── music/          tracks/playlists/votes (sem pirataria)
 │   ├── games/          GameSession/GameResult (recompensas validadas)

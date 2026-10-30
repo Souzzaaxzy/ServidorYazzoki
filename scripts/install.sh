@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────
-# MATRIX API — Pterodactyl installation script
+# Yazzoki API — Pterodactyl installation script
 #
 # Runs once when the server is created in the panel. It clones the repo
 # (if not already present), installs dependencies, generates the Prisma
@@ -26,12 +26,12 @@ if [ ! -f package.json ]; then
   log "Clonando repositório: $REPO_URL (branch $BRANCH)"
   # Clone into a temp dir then move contents into place (Pterodactyl's
   # /mnt/server is not empty-friendly for `git clone .`).
-  git clone --depth 1 -b "$BRANCH" "$REPO_URL" /tmp/matrix-src
+  git clone --depth 1 -b "$BRANCH" "$REPO_URL" /tmp/yazzoki-src
   # Move everything including hidden files into the server directory.
   shopt -s dotglob
-  mv /tmp/matrix-src/* .
+  mv /tmp/yazzoki-src/* .
   shopt -u dotglob
-  rmdir /tmp/matrix-src 2>/dev/null || true
+  rmdir /tmp/yazzoki-src 2>/dev/null || true
   ok "Repositório clonado"
 else
   log "package.json já presente — pulando clone"
@@ -55,6 +55,6 @@ log "Compilando TypeScript"
 npm run build
 ok "Build concluído"
 
-ok "Instalação do MATRIX API concluída!"
+ok "Instalação do Yazzoki API concluída!"
 ok "Configure apenas JWT_SECRET nas variáveis do servidor no painel."
-ok "A porta é obtida automaticamente do painel e o banco é SQLite local (data/matrix.db) — DATABASE_URL não é necessária."
+ok "A porta é obtida automaticamente do painel e o banco é SQLite local (data/yazzoki.db) — DATABASE_URL não é necessária."

@@ -41,7 +41,7 @@ const streamOf = (buf: Buffer): Readable => Readable.from([buf]);
  * exact shape dio sends when a Flutter app uploads voice audio.
  */
 function multipartBody(fileBytes: Buffer, filename: string): Buffer {
-  const boundary = '----matrix-test-boundary-7c2e';
+  const boundary = '----yazzoki-test-boundary-7c2e';
   const preamble = Buffer.from(
     `--${boundary}\r\n` +
       'Content-Disposition: form-data; name="file"; ' +
@@ -168,7 +168,7 @@ describe('Chat — voice messages', () => {
     const conv = await openConversation(a, b);
 
     const audio = m4aFixture();
-    const boundary = '----matrix-test-boundary-7c2e';
+    const boundary = '----yazzoki-test-boundary-7c2e';
     const socket = { send: vi.fn() };
     addSocket(b.id, socket);
     try {

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { ApiError, toApiError } from '../../utils/errors.js';
 import { createRoom, listRooms, joinRoom, leaveRoom, endRoom, listParticipants } from './call.service.js';
 
-// Matrix Calls routes (contracts only — no media transport).
+// Yazzoki Calls routes (contracts only — no media transport).
 //   GET    /calls
 //   POST   /calls
 //   POST   /calls/:id/join

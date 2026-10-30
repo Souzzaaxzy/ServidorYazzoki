@@ -1,8 +1,8 @@
 {
-  "name": "matrix-api",
+  "name": "yazzoki-api",
   "version": "1.0.0",
   "private": true,
-  "description": "MATRIX 💤 — backend API (Node.js + Fastify + Prisma + SQLite)",
+  "description": "Yazzoki 💤 — backend API (Node.js + Fastify + Prisma + SQLite)",
   "type": "module",
   "main": "dist/src/app.js",
   "scripts": {

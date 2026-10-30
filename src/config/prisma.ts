@@ -10,7 +10,7 @@
 // everywhere and no native binary is required on any platform.
 
 import { PrismaClient } from '../generated/index.js';
-import { MatrixNodeSQLiteAdapterFactory } from '../db/node-sqlite-adapter.js';
+import { YazzokiNodeSQLiteAdapterFactory } from '../db/node-sqlite-adapter.js';
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -21,15 +21,15 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 // values needed here are read from process.env directly, with the same
 // defaults as env.ts.
 function databaseUrl(): string {
-  return process.env.DATABASE_URL || `file:${process.cwd()}/data/matrix.db`;
+  return process.env.DATABASE_URL || `file:${process.cwd()}/data/yazzoki.db`;
 }
 
 function createClient(): PrismaClient {
-  const adapter = new MatrixNodeSQLiteAdapterFactory(
+  const adapter = new YazzokiNodeSQLiteAdapterFactory(
     // Resolved at CONNECT time so a DATABASE_URL set after import is honored.
     { url: databaseUrl },
     // Prisma's native SQLite driver stored DateTime as epoch-milliseconds;
-    // keeping that format makes existing data/matrix.db files readable.
+    // keeping that format makes existing data/yazzoki.db files readable.
     { timestampFormat: 'unixepoch-ms' },
   );
   return new PrismaClient({ adapter, log: ['error', 'warn'] });
@@ -45,7 +45,7 @@ function createClient(): PrismaClient {
  * `.catch()` stay silent exactly as before.
  */
 export function createPrismaClient(options?: { quiet?: boolean }): PrismaClient {
-  const adapter = new MatrixNodeSQLiteAdapterFactory(
+  const adapter = new YazzokiNodeSQLiteAdapterFactory(
     { url: databaseUrl },
     { timestampFormat: 'unixepoch-ms' },
   );

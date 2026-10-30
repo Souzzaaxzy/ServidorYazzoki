@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/errors.js';
 
-// ── Matrix Music ──────────────────────────────────────────────
+// ── Yazzoki Music ──────────────────────────────────────────────
 // No commercial audio is stored. Tracks reference an external provider
 // (e.g. a licensed streaming API). The server only stores metadata,
 // playlists and votes.

@@ -8,7 +8,7 @@ config({ path: '.env.test' });
 
 // ── Env ──────────────────────────────────────────────────────
 // Tests use a throwaway SQLite database file (data/test.db) so they never
-// touch the real data/matrix.db used in development/production. We use an
+// touch the real data/yazzoki.db used in development/production. We use an
 // ABSOLUTE path so the Prisma client (src/generated, run by vitest) and the
 // CLI (migrate deploy) open the exact same file regardless of how each
 // resolves relative `file:` paths. The file is wiped before each run.
@@ -75,7 +75,7 @@ const TABLES = [
   'user_achievements',
   'achievements',
   'coin_transactions',
-  'matrix_coins',
+  'yazzoki_coins',
   'xp_transactions',
   'levels',
   'call_participants',

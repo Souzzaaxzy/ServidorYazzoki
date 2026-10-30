@@ -619,7 +619,7 @@ export function ytdlpFailureToApiError(stderr: string): ApiError {
  * Existe para o caso mais simples possível: o operador exporta o cookies.txt
  * do navegador e COPIA O ARQUIVO para a pasta `data/` do servidor. Sem
  * variável de ambiente, sem base64, sem mexer no painel. A pasta `data/` é a
- * mesma (persistente) onde vive o `matrix.db`, então o arquivo sobrevive a
+ * mesma (persistente) onde vive o `yazzoki.db`, então o arquivo sobrevive a
  * reinícios e a redeploys.
  */
 export function dropInCookieFile(): string {

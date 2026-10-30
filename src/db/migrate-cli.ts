@@ -5,11 +5,11 @@
 //   node dist/src/db/migrate-cli.js status   # só mostra o estado
 //   node dist/src/db/migrate-cli.js deploy --dry-run
 //
-// Reads DATABASE_URL (same default as the app: <cwd>/data/matrix.db).
+// Reads DATABASE_URL (same default as the app: <cwd>/data/yazzoki.db).
 import { migrate, status, MigrationDriftError } from './migrate.js';
 
 function databaseUrl(): string {
-  return process.env.DATABASE_URL || `file:${process.cwd()}/data/matrix.db`;
+  return process.env.DATABASE_URL || `file:${process.cwd()}/data/yazzoki.db`;
 }
 
 const command = process.argv[2] ?? 'deploy';

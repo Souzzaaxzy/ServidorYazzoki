@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { ApiError, toApiError } from '../../utils/errors.js';
 import { listTracks, createPlaylist, listMyPlaylists, addTrackToPlaylist, voteTrack } from './music.service.js';
 
-// Matrix Music routes.
+// Yazzoki Music routes.
 //   GET    /music/tracks
 //   POST   /music/playlists
 //   GET    /music/playlists

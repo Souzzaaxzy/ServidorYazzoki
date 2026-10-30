@@ -46,7 +46,7 @@ async function createSeedStickerPackage(userId: string | null = null) {
       slug: `test_pack_${Date.now()}`,
       name: 'Test Pack',
       description: 'pkg de teste',
-      author: 'MATRIX',
+      author: 'Yazzoki',
       iconUrl: 'http://localhost:3000/static/stickers/test/icon.png',
       stickers: {
         create: Array.from({ length: 3 }, (_, i) => ({
@@ -71,7 +71,7 @@ async function createOwnedStickerPackage(userId: string) {
       slug: `owned_pack_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       name: 'Owned Pack',
       description: 'pkg do usuário',
-      author: 'MATRIX',
+      author: 'Yazzoki',
       iconUrl: 'http://localhost:3000/static/stickers/test/icon.png',
       authorId: userId,
       source: 'stickerly',

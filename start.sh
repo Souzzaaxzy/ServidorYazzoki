@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────
-# MATRIX API — script de START tudo-em-um (Hostsquare / Pterodactyl / VPS)
+# Yazzoki API — script de START tudo-em-um (Hostsquare / Pterodactyl / VPS)
 #
 # É o ÚNICO comando necessário para colocar a API online em uma máquina
 # nova: instala TODAS as dependências, gera o cliente Prisma, compila o
@@ -22,7 +22,7 @@
 #  10. seed (só se vazio)    11. exec node dist/src/app.js
 #
 # Sem Docker, sem PostgreSQL/psql, sem banco externo. O arquivo SQLite
-# data/matrix.db NUNCA é apagado/resetado por este script.
+# data/yazzoki.db NUNCA é apagado/resetado por este script.
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -43,7 +43,7 @@ GENERATED="src/generated"
 APP_ENTRY="dist/src/app.js"
 SEED_ENTRY="dist/prisma/seed.js"
 DATA_DIR="data"
-DB_FILE="$DATA_DIR/matrix.db"
+DB_FILE="$DATA_DIR/yazzoki.db"
 
 # Prisma helpers (Termux-safe generate/migrate) — see scripts/lib-prisma.sh.
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/lib-prisma.sh"
@@ -69,7 +69,7 @@ done
 # 1. DIAGNÓSTICO DE AMBIENTE
 # ══════════════════════════════════════════════════════════════
 echo "═══════════════════════════════════════════════════════════════"
-echo "  MATRIX API — diagnóstico de ambiente"
+echo "  Yazzoki API — diagnóstico de ambiente"
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Data/hora      : $(date 2>/dev/null || echo '?')"
 echo "  Diretório      : $(pwd)"
@@ -192,12 +192,12 @@ ensure_media_tools() {
   # Binários baixados pelo próprio projeto (data/bin) têm prioridade: em
   # container não há como instalar por gerenciador de pacotes, e o download
   # estático é o único caminho.
-  export PATH="$MATRIX_MEDIA_BIN_DIR:$PATH"
-  if [ -z "${YT_DLP_PATH:-}" ] && [ -x "$MATRIX_MEDIA_BIN_DIR/yt-dlp" ]; then
-    export YT_DLP_PATH="$MATRIX_MEDIA_BIN_DIR/yt-dlp"
+  export PATH="$YAZZOKI_MEDIA_BIN_DIR:$PATH"
+  if [ -z "${YT_DLP_PATH:-}" ] && [ -x "$YAZZOKI_MEDIA_BIN_DIR/yt-dlp" ]; then
+    export YT_DLP_PATH="$YAZZOKI_MEDIA_BIN_DIR/yt-dlp"
   fi
-  if [ -z "${FFMPEG_PATH:-}" ] && [ -x "$MATRIX_MEDIA_BIN_DIR/ffmpeg" ]; then
-    export FFMPEG_PATH="$MATRIX_MEDIA_BIN_DIR/ffmpeg"
+  if [ -z "${FFMPEG_PATH:-}" ] && [ -x "$YAZZOKI_MEDIA_BIN_DIR/ffmpeg" ]; then
+    export FFMPEG_PATH="$YAZZOKI_MEDIA_BIN_DIR/ffmpeg"
   fi
 
   if [ -n "${YT_DLP_PATH:-}" ] && [ -x "${YT_DLP_PATH:-}" ]; then
@@ -218,7 +218,7 @@ ensure_media_tools() {
   # Funciona quando há root (Termux/pkg, Debian/apt, Alpine/apk). Em
   # container Pterodactyl não há root nem esses gerenciadores — cai no
   # download estático abaixo.
-  if matrix_is_termux; then
+  if yazzoki_is_termux; then
     if [ "$need_ffmpeg" = 1 ]; then
       log "Instalando ffmpeg (pkg install ffmpeg) — pode demorar"
       pkg install -y ffmpeg >/dev/null 2>&1 \
@@ -273,16 +273,16 @@ ensure_media_tools() {
 
   if [ "$need_ytdlp" = 1 ]; then
     # O yt-dlp é OBRIGATÓRIO para o recurso existir.
-    if command -v matrix_fetch_ytdlp >/dev/null 2>&1; then
-      matrix_fetch_ytdlp || true
-      [ -x "$MATRIX_MEDIA_BIN_DIR/yt-dlp" ] && export YT_DLP_PATH="$MATRIX_MEDIA_BIN_DIR/yt-dlp"
+    if command -v yazzoki_fetch_ytdlp >/dev/null 2>&1; then
+      yazzoki_fetch_ytdlp || true
+      [ -x "$YAZZOKI_MEDIA_BIN_DIR/yt-dlp" ] && export YT_DLP_PATH="$YAZZOKI_MEDIA_BIN_DIR/yt-dlp"
     fi
   fi
   if [ "$need_ffmpeg" = 1 ]; then
     # O ffmpeg é OPCIONAL (sem ele o app toca a janela do trecho).
-    if command -v matrix_fetch_ffmpeg >/dev/null 2>&1; then
-      matrix_fetch_ffmpeg || true
-      [ -x "$MATRIX_MEDIA_BIN_DIR/ffmpeg" ] && export FFMPEG_PATH="$MATRIX_MEDIA_BIN_DIR/ffmpeg"
+    if command -v yazzoki_fetch_ffmpeg >/dev/null 2>&1; then
+      yazzoki_fetch_ffmpeg || true
+      [ -x "$YAZZOKI_MEDIA_BIN_DIR/ffmpeg" ] && export FFMPEG_PATH="$YAZZOKI_MEDIA_BIN_DIR/ffmpeg"
     fi
   fi
 
@@ -303,6 +303,15 @@ ensure_media_tools
 # ── 4. Diretórios persistentes ─────────────────────────────────
 mkdir -p "$DATA_DIR" uploads
 ok "Diretórios prontos: $DATA_DIR/ e uploads/"
+# Migração de rebrand: o arquivo SQLite passou de matrix.db para yazzoki.db.
+# Move o arquivo existente UMA vez para que um servidor já em produção
+# mantenha TODOS os dados em vez de subir um banco vazio. Idempotente: só
+# roda enquanto o nome antigo existe e o novo não. Nunca sobrescreve.
+LEGACY_DB_FILE="$DATA_DIR/matrix.db"
+if [ -f "$LEGACY_DB_FILE" ] && [ ! -f "$DB_FILE" ]; then
+  mv "$LEGACY_DB_FILE" "$DB_FILE"
+  ok "Banco legado renomeado: matrix.db → yazzoki.db (dados preservados)"
+fi
 [ -f "$DB_FILE" ] && ok "Banco existente detectado: $DB_FILE (dados preservados)"
 
 # ── 4b. Cookies do YouTube (drop-in, opcional) ─────────────────
@@ -339,7 +348,7 @@ needs_prisma_generate() {
 }
 if needs_prisma_generate; then
   log "Gerando cliente Prisma"
-  matrix_prisma_generate "$PRISMA" .
+  yazzoki_prisma_generate "$PRISMA" .
   ok "Cliente Prisma gerado"
 else
   ok "Cliente Prisma atualizado (generate ignorado)"
@@ -376,12 +385,12 @@ if [ "$INSTALL_ONLY" -eq 1 ]; then
 fi
 
 # ── 8. Migrations (cria o SQLite na 1ª vez; nunca destrutivo) ───
-if matrix_is_termux; then
+if yazzoki_is_termux; then
   log "Aplicando migrations (runner node:sqlite — Termux, sem schema engine)"
 else
   log "Aplicando migrations (prisma migrate deploy)"
 fi
-matrix_migrate "$PRISMA" .
+yazzoki_migrate "$PRISMA" .
 ok "Migrations aplicadas"
 
 if ! node -e "

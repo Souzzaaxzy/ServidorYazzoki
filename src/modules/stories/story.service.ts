@@ -9,7 +9,7 @@ import {
 
 // ── Stories ──────────────────────────────────────────────────
 // Ephemeral media that expires 24h after publication. Built ENTIRELY on the
-// existing MATRIX stack: same auth, same users/avatars (AUTHOR_SELECT +
+// existing Yazzoki stack: same auth, same users/avatars (AUTHOR_SELECT +
 // the same author fragment the feed embeds, so nickname/avatar/cosmetics
 // render identically), same upload/storage (mediaUrl/thumbnailUrl are the
 // very references a Post uses). No parallel media or user system.

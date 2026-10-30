@@ -36,7 +36,7 @@ export function isValidNickname(nickname: string): boolean {
   return true;
 }
 
-// MATRIX ID / identifier used during account recovery — accepts a nickname
+// Yazzoki ID / identifier used during account recovery — accepts a nickname
 // or the raw internal id. We don't expose whether a lookup matched so the
 // endpoint can't be used for user enumeration.
 export function normalizeIdentifier(identifier: string): string {

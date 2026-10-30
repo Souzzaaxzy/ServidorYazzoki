@@ -5,12 +5,12 @@ import { NotificationType } from '../../types/enums.js';
 import { setPresenceDispatcher } from '../presence/presence.service.js';
 
 // ── Push dispatch ────────────────────────────────────────────
-// The MATRIX push transport lives entirely inside ServidorMtx (no separate
+// The Yazzoki push transport lives entirely inside ServidorMtx (no separate
 // server, no third-party SDK):
 //
 //   event (like/comment/friend) → SQLite notification row → dispatch →
 //   in-app realtime WebSocket → the APK turns it into a native Android
-//   notification via NotificationManager (Goo-independent, 100% MATRIX).
+//   notification via NotificationManager (Goo-independent, 100% Yazzoki).
 //
 // Dedupe: every persisted notification has a unique id; the dispatcher
 // keeps an LRU of already-dispatched ids so a retried event NEVER produces
@@ -346,7 +346,7 @@ export function buildMessage(
 ): PushMessage {
   return {
     kind: 'notification',
-    title: 'MATRIX',
+    title: 'Yazzoki',
     body: composeBody(notification.type, actorNickname),
     data: {
       notificationId: notification.id,

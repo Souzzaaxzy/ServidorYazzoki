@@ -69,11 +69,11 @@ export const env = {
   // endereço exibido no painel.
   publicApiUrl: (process.env.PUBLIC_API_URL ?? '').replace(/\/+$/, ''),
   corsOrigin: (process.env.CORS_ORIGIN ?? '*').split(',').map((s) => s.trim()),
-  // SQLite file (created at <project root>/data/matrix.db by start.sh).
+  // SQLite file (created at <project root>/data/yazzoki.db by start.sh).
   // DATABASE_URL is optional in production; this default points at an
   // ABSOLUTE path so the Prisma client (dev or compiled dist) and the CLI
   // all open the same file regardless of how they resolve relative paths.
-  databaseUrl: required('DATABASE_URL', `file:${process.cwd()}/data/matrix.db`),
+  databaseUrl: required('DATABASE_URL', `file:${process.cwd()}/data/yazzoki.db`),
   jwt: {
     secret: jwtSecret(),
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
@@ -83,7 +83,7 @@ export const env = {
     endpoint: process.env.STORAGE_ENDPOINT ?? '',
     accessKey: process.env.STORAGE_ACCESS_KEY ?? '',
     secretKey: process.env.STORAGE_SECRET_KEY ?? '',
-    bucket: process.env.STORAGE_BUCKET ?? 'matrix-uploads',
+    bucket: process.env.STORAGE_BUCKET ?? 'yazzoki-uploads',
     region: process.env.STORAGE_REGION ?? 'auto',
     forcePathStyle: process.env.STORAGE_FORCE_PATH_STYLE !== 'false',
     publicBaseUrl: process.env.STORAGE_PUBLIC_BASE_URL ?? '',

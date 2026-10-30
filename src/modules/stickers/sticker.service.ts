@@ -3,7 +3,7 @@ import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/errors.js';
 
 // ── Stickers (figurinhas) ────────────────────────────────────
-// Native sticker collection built on the MATRIX stack. Server-owned catalog
+// Native sticker collection built on the Yazzoki stack. Server-owned catalog
 // (StickerPackage + Sticker), per-user installs (UserStickerPackage),
 // favorites (StickerFavorite) and recents (StickerRecent). The art files are
 // persisted under the standard /static/ storage — never deleted with a
@@ -269,7 +269,7 @@ async function ensureFavoriteArchivePackage(userId: string) {
       name: 'Favoritas',
       slug,
       description: 'Figurinhas favoritas salvas pelo usuário.',
-      author: 'MATRIX',
+      author: 'Yazzoki',
       iconUrl: '',
       // Inactive on purpose: never appears in the picker/catalog — it exists
       // only so favorited stickers survive their package's deletion.
@@ -444,7 +444,7 @@ export async function importStickerPackage(
       name: cleanName,
       slug: `${slugify(cleanName)}-${randomBytes(4).toString('hex')}`,
       description: 'Importado do compartilhamento do Android.',
-      author: 'MATRIX',
+      author: 'Yazzoki',
       iconUrl: first.url,
       active: true,
       // Owned by the user (source=share) so the catalog only shows it to them.

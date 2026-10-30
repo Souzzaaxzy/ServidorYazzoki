@@ -3,7 +3,7 @@
 ## Arquitetura
 
 ```
-MatrixApp ──► URL PÚBLICA (Bronxys/Pterodactyl) ──► ServidorMtx ──► data/matrix.db (SQLite)
+YazzokiApp ──► URL PÚBLICA (Bronxys/Pterodactyl) ──► ServidorMtx ──► data/yazzoki.db (SQLite)
 ```
 
 UMA API, UMA URL, UM servidor, UM banco. Sem túneis, sem URLs externas,
@@ -35,7 +35,7 @@ Para descobrir o endereço real:
 - **Servidor (informativo/diagnóstico):** variável `PUBLIC_API_URL` no
   painel (Server → Variables). O banner de startup imprime a URL e o link
   do health check.
-- **App (MatrixApp):** `app/lib/data/api_config.dart` (constante
+- **App (YazzokiApp):** `app/lib/data/api_config.dart` (constante
   `_productionUrl`) ou, preferencialmente, o secret `API_BASE_URL` do
   GitHub Actions, injetado no build de release via
   `--dart-define=API_BASE_URL=...`.
@@ -44,8 +44,8 @@ Para descobrir o endereço real:
 
 1. `GET URL/health` → HTTP 200.
 2. `POST URL/api/auth/register` com
-   `{"name":"Teste","username":"teste_matrix","password":"Matrix123"}`
+   `{"name":"Teste","username":"teste_yazzoki","password":"Yazzoki123"}`
    → HTTP 201 com tokens + `recoveryCode`.
 3. `POST URL/api/auth/login` com
-   `{"username":"teste_matrix","password":"Matrix123"}` → HTTP 200.
+   `{"username":"teste_yazzoki","password":"Yazzoki123"}` → HTTP 200.
 4. No APK: criar conta → entrar → sair → entrar de novo.

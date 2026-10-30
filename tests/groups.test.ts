@@ -19,7 +19,7 @@ function m4aFixture(): Buffer {
 
 
 function multipartBody(fileBytes: Buffer, filename: string): Buffer {
-  const boundary = '----matrix-group-test-boundary-9f4a';
+  const boundary = '----yazzoki-group-test-boundary-9f4a';
   const preamble = Buffer.from(
     `--${boundary}\r\n` +
       'Content-Disposition: form-data; name="file"; ' +
@@ -66,14 +66,14 @@ describe('Groups', () => {
       url: '/api/groups',
       headers: { authorization: `Bearer ${owner.accessToken}` },
       payload: {
-        name: 'Matrix Crew',
+        name: 'Yazzoki Crew',
         description: 'nosso grupo',
         participantIds: [peer.id],
       },
     });
     expect(createRes.statusCode).toBe(201);
     const group = JSON.parse(createRes.payload).group;
-    expect(group.group.name).toBe('Matrix Crew');
+    expect(group.group.name).toBe('Yazzoki Crew');
 
     // Owner posts a message;the response embeds the sender (app-shaped).
     const sendRes = await server.inject({
@@ -278,7 +278,7 @@ describe('Groups', () => {
       url: `/api/groups/${group.id}/voice?durationMs=3000&replyToMessageId=${baseId}`,
       headers: {
         authorization: `Bearer ${peer.accessToken}`,
-        'content-type': 'multipart/form-data; boundary=----matrix-group-test-boundary-9f4a',
+        'content-type': 'multipart/form-data; boundary=----yazzoki-group-test-boundary-9f4a',
       },
       payload: multipartBody(audio, 'group_reply.m4a'),
     });
@@ -322,7 +322,7 @@ describe('Groups', () => {
       url: `/api/groups/${otherGroupId}/voice?durationMs=3000&replyToMessageId=${baseId}`,
       headers: {
         authorization: `Bearer ${peer.accessToken}`,
-        'content-type': 'multipart/form-data; boundary=----matrix-group-test-boundary-9f4a',
+        'content-type': 'multipart/form-data; boundary=----yazzoki-group-test-boundary-9f4a',
       },
       payload: multipartBody(audio, 'bad_reply.m4a'),
     });
@@ -913,14 +913,14 @@ describe('Groups', () => {
       headers: { authorization: `Bearer ${owner.accessToken}` },
       payload: {
         kind: 'image',
-        url: 'https://cdn.matrix.app/static/img1.png',
+        url: 'https://cdn.yazzoki.app/static/img1.png',
         replyToMessageId: baseId,
       },
     });
     expect(mediaRes.statusCode).toBe(201);
     const msg = JSON.parse(mediaRes.payload).message;
     expect(msg.type).toBe('image');
-    expect(msg.imageUrl).toBe('https://cdn.matrix.app/static/img1.png');
+    expect(msg.imageUrl).toBe('https://cdn.yazzoki.app/static/img1.png');
     expect(msg.replyTo?.id).toBe(baseId);
 
     // The peer sees the image message (type + url).
@@ -933,7 +933,7 @@ describe('Groups', () => {
       (m: { id: string }) => m.id === msg.id,
     );
     expect(found.type).toBe('image');
-    expect(found.imageUrl).toBe('https://cdn.matrix.app/static/img1.png');
+    expect(found.imageUrl).toBe('https://cdn.yazzoki.app/static/img1.png');
   });
 
   it('rejects group media sent by a NON-member (403) and invalid reply (400)', async () => {

@@ -34,7 +34,7 @@ import {
 } from '@prisma/driver-adapter-utils';
 
 const PROVIDER = 'sqlite' as const;
-const ADAPTER_NAME = 'matrix-node-sqlite';
+const ADAPTER_NAME = 'yazzoki-node-sqlite';
 
 // ── Declared SQLite column type -> Prisma ColumnType ───────────
 // Mirrors the official adapter's mapDeclType.
@@ -131,7 +131,7 @@ function getColumnTypes(declaredTypes: Array<string | null>, rows: unknown[][]):
 // ── Prisma value -> node:sqlite bind value ─────────────────────
 // `timestampFormat` defaults to 'unixepoch-ms' because Prisma's native SQLite
 // driver stored DateTime as an epoch-milliseconds INTEGER; keeping that format
-// means existing data/matrix.db files stay byte-compatible.
+// means existing data/yazzoki.db files stay byte-compatible.
 export type AdapterOptions = { timestampFormat?: 'unixepoch-ms' | 'iso8601' };
 
 function toTimestamp(value: Date, options?: AdapterOptions): number | string {
@@ -376,7 +376,7 @@ class NodeSQLiteAdapter extends NodeSQLiteQueryable implements SqlDriverAdapter 
  * Creates Prisma driver adapters backed by `node:sqlite`.
  * Pass it to `new PrismaClient({ adapter })`.
  */
-export class MatrixNodeSQLiteAdapterFactory implements SqlDriverAdapterFactory {
+export class YazzokiNodeSQLiteAdapterFactory implements SqlDriverAdapterFactory {
   readonly provider = PROVIDER;
   readonly adapterName = ADAPTER_NAME;
 

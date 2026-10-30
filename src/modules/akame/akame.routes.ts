@@ -16,7 +16,7 @@ export const akameRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       prompt,
       history: body.history,
       systemPrompt:
-        'You are Akame, the assistant of the MATRIX social platform. Reply concisely in Portuguese (pt-BR).',
+        'You are Akame, the assistant of the Yazzoki social platform. Reply concisely in Portuguese (pt-BR).',
     });
     return reply.send({ response, provider: provider.name });
   });
