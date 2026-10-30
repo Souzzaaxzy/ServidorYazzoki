@@ -37,6 +37,32 @@ warn() { printf '\033[1;33m[WARN] %s\033[0m\n' "$*" >&2; }
 err()  { printf '\033[1;31m[ERROR] %s\033[0m\n' "$*" >&2; }
 die()  { err "$*"; exit 1; }
 
+# ── 3. Auto-update (git checkout only) ────────────────────────
+# Um deploy que só re-executa `npm start` continuaria servindo o dist/ ANTIGO
+# para sempre (este script nunca puxava). Quando o projeto é um checkout git
+# num branch, faz fast-forward ANTES do build, para os commits novos valerem
+# no restart. Tudo é best-effort: sem git/rede/árvore suja apenas avisa e
+# sobe o código atual. Desative com YAZZOKI_NO_UPDATE=1.
+update_from_git() {
+  [ "${YAZZOKI_NO_UPDATE:-0}" = "1" ] && { info "Auto-update desativado (YAZZOKI_NO_UPDATE=1)"; return 0; }
+  command -v git >/dev/null 2>&1 || return 0
+  [ -d .git ] || return 0
+  git rev-parse --abbrev-ref HEAD >/dev/null 2>&1 || return 0
+  local branch
+  branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+  [ -n "$branch" ] && [ "$branch" != "HEAD" ] || return 0
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    warn "Árvore git com alterações locais — auto-update ignorado (build do código atual)"
+    return 0
+  fi
+  if git pull --ff-only --quiet 2>/dev/null; then
+    ok "Código atualizado do git ($branch)"
+  else
+    warn "git pull falhou (sem rede/remoto?) — seguindo com o código atual"
+  fi
+}
+update_from_git
+
 PRISMA="./node_modules/.bin/prisma"
 SCHEMA="prisma/schema.prisma"
 GENERATED="src/generated"

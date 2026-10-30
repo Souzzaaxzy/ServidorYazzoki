@@ -9,15 +9,17 @@
 #   1. diagnostics
 #   2. .env  — load if present (OPTIONAL; never required, never overwritten).
 #              In production (Pterodactyl/Bronxys) variables come from process.env.
-#   3. deps  — npm install only if node_modules is missing/incomplete
-#   4. data  — create the persistent data/ dir (SQLite lives here)
-#   5. db    — resolve DATABASE_URL (defaults to the local SQLite file)
-#   6. prisma — generate the client only if missing/stale
-#   7. validate — check required process.env (JWT_SECRET, PORT); DB is optional
-#   8. migrations — prisma migrate deploy (creates the DB on first boot)
-#   9. build — compile TypeScript only if dist is missing/stale
-#  10. seed  — populate an empty DB only (never destroys data)
-#  11. start — exec node dist/src/app.js (becomes the container's main process)
+#   3. update — git pull when running from a git checkout (so a deploy picks
+#              up new commits; skippable with YAZZOKI_NO_UPDATE=1)
+#   4. deps  — npm install only if node_modules is missing/incomplete
+#   5. data  — create the persistent data/ dir (SQLite lives here)
+#   6. db    — resolve DATABASE_URL (defaults to the local SQLite file)
+#   7. prisma — generate the client only if missing/stale
+#   8. validate — check required process.env (JWT_SECRET, PORT); DB is optional
+#   9. migrations — prisma migrate deploy (creates the DB on first boot)
+#  10. build — compile TypeScript only if dist is missing/stale
+#  11. seed  — populate an empty DB only (never destroys data)
+#  12. start — exec node dist/src/app.js (becomes the container's main process)
 #
 # Every step is idempotent. No loops, no background processes, no --force,
 # no --legacy-peer-deps. No PostgreSQL, no psql, no external database.
@@ -35,6 +37,33 @@ info() { printf '\033[1;34m[INFO] %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[WARN] %s\033[0m\n' "$*" >&2; }
 err()  { printf '\033[1;31m[ERROR] %s\033[0m\n' "$*" >&2; }
 die()  { err "$*"; exit 1; }
+
+# ── 3. Auto-update (git checkout only) ────────────────────────
+# A panel deploy that only re-runs `npm start` would otherwise keep serving
+# the OLD dist/ forever (this script used to never pull). When the project is
+# a git checkout on a branch, fast-forward it to the remote BEFORE the build
+# step, so new commits take effect on restart. Everything is best-effort:
+# offline/absent git/dirty tree only WARNS and boots the current code.
+# Opt out with YAZZOKI_NO_UPDATE=1 (e.g. a dev with local edits).
+update_from_git() {
+  [ "${YAZZOKI_NO_UPDATE:-0}" = "1" ] && { info "Auto-update desativado (YAZZOKI_NO_UPDATE=1)"; return 0; }
+  command -v git >/dev/null 2>&1 || return 0
+  [ -d .git ] || return 0
+  git rev-parse --abbrev-ref HEAD >/dev/null 2>&1 || return 0
+  local branch
+  branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+  [ -n "$branch" ] && [ "$branch" != "HEAD" ] || return 0
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    warn "Árvore git com alterações locais — auto-update ignorado (build do código atual)"
+    return 0
+  fi
+  if git pull --ff-only --quiet 2>/dev/null; then
+    ok "Código atualizado do git ($branch)"
+  else
+    warn "git pull falhou (sem rede/remoto?) — seguindo com o código atual"
+  fi
+}
+update_from_git
 
 PRISMA="./node_modules/.bin/prisma"
 SCHEMA="prisma/schema.prisma"
