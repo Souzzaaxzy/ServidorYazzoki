@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { buildTestServer, closeTestServer, createAndLoginUser } from './helpers.js';
+import { buildTestServer, closeTestServer, createAndLoginUser, followEachOther } from './helpers.js';
 import { prisma } from '../src/config/prisma.js';
 import type { FastifyInstance } from 'fastify';
 import { addSocket, removeSocket } from '../src/modules/push/push.service.js';
@@ -41,17 +41,8 @@ afterAll(async () => {
 });
 
 async function makeFriends(a: { id: string; accessToken: string }, b: { id: string; accessToken: string }) {
-  const send = await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${b.id}`,
-    headers: { authorization: `Bearer ${a.accessToken}` },
-  });
-  const request = JSON.parse(send.payload);
-  await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${request.id}/accept`,
-    headers: { authorization: `Bearer ${b.accessToken}` },
-  });
+  // Follow graph replaced mutual friendship (chat/groups gate on a follow).
+  await followEachOther(server, a, b);
 }
 
 describe('Groups', () => {

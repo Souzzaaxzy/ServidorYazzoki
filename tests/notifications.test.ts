@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { buildTestServer, closeTestServer, createAndLoginUser } from './helpers.js';
+import { buildTestServer, closeTestServer, createAndLoginUser, followEachOther } from './helpers.js';
 import { prisma } from '../src/config/prisma.js';
 import type { FastifyInstance } from 'fastify';
 
@@ -196,24 +196,26 @@ describe('Notifications', () => {
     expect(JSON.parse(res.payload).notifications).toHaveLength(0);
   });
 
-  it('friend request notification disappears once accepted (card closes)', async () => {
+  it('follow notification is created and cleared on unfollow', async () => {
     const a = await createAndLoginUser(server, { nickname: 'closesender' });
     const b = await createAndLoginUser(server, { nickname: 'closereceiver' });
-    const send = await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${b.id}`,
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    const request = JSON.parse(send.payload);
     await server.inject({
       method: 'POST',
-      url: `/api/friend-requests/${request.id}/accept`,
-      headers: { authorization: `Bearer ${b.accessToken}` },
+      url: `/api/users/${b.id}/follow`,
+      headers: { authorization: `Bearer ${a.accessToken}` },
     });
-    const remaining = await prisma.notification.count({
-      where: { recipientId: b.id, type: 'FRIEND_REQUEST' },
+    expect(await prisma.notification.count({
+      where: { recipientId: b.id, type: 'FOLLOW' },
+    })).toBe(1);
+
+    await server.inject({
+      method: 'DELETE',
+      url: `/api/users/${b.id}/follow`,
+      headers: { authorization: `Bearer ${a.accessToken}` },
     });
-    expect(remaining).toBe(0);
+    expect(await prisma.notification.count({
+      where: { recipientId: b.id, type: 'FOLLOW' },
+    })).toBe(0);
   });
 
   it('requires authentication (401) for listing and marking', async () => {

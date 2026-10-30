@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { buildTestServer, closeTestServer, createAndLoginUser } from './helpers.js';
+import { buildTestServer, closeTestServer, createAndLoginUser, followEachOther } from './helpers.js';
 import { prisma } from '../src/config/prisma.js';
 import type { FastifyInstance } from 'fastify';
 import { addSocket, removeSocket } from '../src/modules/push/push.service.js';
@@ -14,17 +14,9 @@ afterAll(async () => {
 });
 
 async function makeFriends(a: { id: string; accessToken: string }, b: { id: string; accessToken: string }) {
-  const send = await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${b.id}`,
-    headers: { authorization: `Bearer ${a.accessToken}` },
-  });
-  const request = JSON.parse(send.payload);
-  await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${request.id}/accept`,
-    headers: { authorization: `Bearer ${b.accessToken}` },
-  });
+  // The follow graph replaced mutual friendship: two reciprocal follows give
+  // the pair the same ability to interact (DM / group) as friends had.
+  await followEachOther(server, a, b);
 }
 
 async function openConversation(a: { accessToken: string }, b: { id: string }) {
@@ -129,7 +121,7 @@ describe('Private chat', () => {
     expect(JSON.parse(msgs.payload).messages).toHaveLength(1);
   });
 
-  it('REGRAS: open conversation with a NON-friend is forbidden (403)', async () => {
+  it('REGRAS: open conversation without a follow is forbidden (403)', async () => {
     const a = await createAndLoginUser(server, { nickname: 'nofriend_a' });
     const b = await createAndLoginUser(server, { nickname: 'nofriend_b' });
     const res = await server.inject({
@@ -138,7 +130,7 @@ describe('Private chat', () => {
       headers: { authorization: `Bearer ${a.accessToken}` },
     });
     expect(res.statusCode).toBe(403);
-    expect(JSON.parse(res.payload).error.message).toContain('amigos');
+    expect(JSON.parse(res.payload).error.message).toContain('seguir');
     expect(await prisma.conversation.count()).toBe(0);
   });
 

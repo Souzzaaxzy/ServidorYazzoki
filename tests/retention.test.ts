@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
 import { prisma } from '../src/config/prisma.js';
-import { buildTestServer, closeTestServer, createAndLoginUser } from './helpers.js';
+import { buildTestServer, closeTestServer, createAndLoginUser, followEachOther } from './helpers.js';
 import {
   purgeDeliveredMessages,
   DELIVERED_RETENTION_MS,
@@ -30,23 +30,13 @@ const recentlyDelivered = () =>
 const ancient = () =>
   new Date(Date.now() - UNDELIVERED_RETENTION_MS - 60_000);
 
-/// The server only lets FRIENDS open a conversation, so the tests must
-/// establish the friendship first (same helper the chat tests use).
+/// The server only lets users connected by a follow open a conversation, so
+/// the tests establish a reciprocal follow first (chat gate).
 async function makeFriends(
   a: { id: string; accessToken: string },
   b: { id: string; accessToken: string },
 ) {
-  const send = await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${b.id}`,
-    headers: { authorization: `Bearer ${a.accessToken}` },
-  });
-  const request = JSON.parse(send.payload);
-  await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${request.id}/accept`,
-    headers: { authorization: `Bearer ${b.accessToken}` },
-  });
+  await followEachOther(server, a, b);
 }
 
 async function dmBetween(

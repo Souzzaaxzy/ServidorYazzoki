@@ -8,7 +8,7 @@ import { setPresenceDispatcher } from '../presence/presence.service.js';
 // The Yazzoki push transport lives entirely inside ServidorYazzoki (no separate
 // server, no third-party SDK):
 //
-//   event (like/comment/friend) → SQLite notification row → dispatch →
+//   event (like/comment/follow) → SQLite notification row → dispatch →
 //   in-app realtime WebSocket → the APK turns it into a native Android
 //   notification via NotificationManager (Goo-independent, 100% Yazzoki).
 //
@@ -30,7 +30,6 @@ export interface PushMessage {
     actorNickname: string;
     postId: string | null;
     commentId: string | null;
-    friendRequestId: string | null;
   };
 }
 
@@ -325,10 +324,8 @@ export function composeBody(type: string, actorNickname: string): string {
       return `${actorNickname} curtiu sua publicação.`;
     case NotificationType.COMMENT:
       return `${actorNickname} comentou na sua publicação.`;
-    case NotificationType.FRIEND_REQUEST:
-      return `${actorNickname} enviou uma solicitação de amizade.`;
-    case NotificationType.FRIEND_ACCEPTED:
-      return `Agora você e ${actorNickname} são amigos.`;
+    case NotificationType.FOLLOW:
+      return `${actorNickname} começou a seguir você.`;
     default:
       return `${actorNickname} interagiu com você.`;
   }
@@ -340,7 +337,6 @@ export function buildMessage(
     type: string;
     postId: string | null;
     commentId: string | null;
-    friendRequestId: string | null;
   },
   actorNickname: string,
 ): PushMessage {
@@ -354,7 +350,6 @@ export function buildMessage(
       actorNickname,
       postId: notification.postId,
       commentId: notification.commentId,
-      friendRequestId: notification.friendRequestId,
     },
   };
 }
@@ -375,7 +370,6 @@ export async function dispatchNotification(
     type: string;
     postId: string | null;
     commentId: string | null;
-    friendRequestId: string | null;
   },
 ): Promise<boolean> {
   if (!rememberDispatched(notification.id)) return false;

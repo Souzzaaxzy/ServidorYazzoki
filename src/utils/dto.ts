@@ -1,4 +1,4 @@
-import type { Comment, FriendRequest, Notification, Post, User } from '../generated/index.js';
+import type { Comment, Notification, Post, User } from '../generated/index.js';
 import { formatPublicId } from './public-id.js';
 
 // Author/public-user select. Every payload that renders a user (feed,
@@ -66,10 +66,13 @@ export function toAuthUser(user: User): AuthUser {
 }
 
 // Profile user — a public user plus real aggregate counters. The profile
-// screen renders Amigos/Posts from these; counting is done server-side
-// (accepted friendships only, all posts of the user).
+// screen renders Seguidores/Seguindo/Curtidas/Posts from these; counting is
+// done server-side (follow graph + all likes on the user's posts).
 export interface ProfileUser extends PublicUser {
-  friendsCount: number;
+  followersCount: number;
+  followingCount: number;
+  /** Total likes across ALL of the user's posts. */
+  likesCount: number;
   postsCount: number;
   /** A música fixada no perfil (trecho), ou null quando não há. */
   music: ProfileMusicPayload | null;
@@ -107,7 +110,12 @@ type WithProfileMusic = {
 
 export function toProfileUser(
   user: User & WithProfileMusic,
-  counts: { friendsCount: number; postsCount: number },
+  counts: {
+    followersCount: number;
+    followingCount: number;
+    likesCount: number;
+    postsCount: number;
+  },
 ): ProfileUser {
   return {
     ...toPublicUser(user),
@@ -219,38 +227,11 @@ export function toPostComment(
   };
 }
 
-// ── Social: friend requests & notifications ──────────────────
+// ── Notifications ────────────────────────────────────────────
 // The shapes the APK consumes. The actor (other user) is embedded in every
-// notification so the client never needs a second lookup; friend request
-// status is embedded when the notification references one.
+// notification so the client never needs a second lookup.
 
-// Actor/sender selects embed the actor's own name color too, so every
-// notification/request renders each user with THEIR color.
 const ACTOR_SELECT = AUTHOR_SELECT;
-
-export interface FriendRequestItem {
-  id: string;
-  status: string;
-  createdAt: string;
-  sender: Pick<PublicUser, 'id' | 'nickname' | 'avatarUrl'>;
-}
-
-export function toFriendRequestItem(
-  request: FriendRequest & {
-    sender: Pick<User, 'id' | 'nickname' | 'avatarUrl'>;
-  },
-): FriendRequestItem {
-  return {
-    id: request.id,
-    status: request.status,
-    createdAt: request.createdAt.toISOString(),
-    sender: {
-      id: request.sender.id,
-      nickname: request.sender.nickname,
-      avatarUrl: request.sender.avatarUrl,
-    },
-  };
-}
 
 export interface NotificationItem {
   id: string;
@@ -259,15 +240,12 @@ export interface NotificationItem {
   createdAt: string;
   postId: string | null;
   commentId: string | null;
-  friendRequestId: string | null;
-  friendRequestStatus: string | null;
   actor: Pick<PublicUser, 'id' | 'nickname' | 'avatarUrl'>;
 }
 
 export function toNotificationItem(
   notification: Notification & {
     actor: Pick<User, 'id' | 'nickname' | 'avatarUrl'>;
-    friendRequest?: { id: string; status: string } | null;
   },
 ): NotificationItem {
   return {
@@ -277,8 +255,6 @@ export function toNotificationItem(
     createdAt: notification.createdAt.toISOString(),
     postId: notification.postId,
     commentId: notification.commentId,
-    friendRequestId: notification.friendRequestId,
-    friendRequestStatus: notification.friendRequest?.status ?? null,
     actor: {
       id: notification.actor.id,
       nickname: notification.actor.nickname,

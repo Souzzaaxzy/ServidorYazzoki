@@ -78,31 +78,19 @@ describe('Account — DELETE /api/auth/account', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('removes friendships and notifications tied to the deleted user', async () => {
+  it('removes follows and notifications tied to the deleted user', async () => {
     const a = await createAndLoginUser(server, { nickname: 'del_a' });
     const b = await createAndLoginUser(server, { nickname: 'del_b' });
 
-    // b sends a friend request to a, a accepts → friendship + notifications.
+    // b follows a → follow row + FOLLOW notification.
     await server.inject({
       method: 'POST',
-      url: `/api/friend-requests/${a.id}`,
+      url: `/api/users/${a.id}/follow`,
       headers: { authorization: `Bearer ${b.accessToken}` },
     });
-    const reqs = await server.inject({
-      method: 'GET',
-      url: '/api/friend-requests',
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    const requestId = JSON.parse(reqs.payload).requests[0].id as string;
-    const accept = await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${requestId}/accept`,
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    expect(accept.statusCode).toBe(204);
 
-    expect(await prisma.friendship.count({
-      where: { OR: [{ userOneId: a.id }, { userTwoId: a.id }] },
+    expect(await prisma.follow.count({
+      where: { OR: [{ followerId: a.id }, { followingId: a.id }] },
     })).toBe(1);
 
     await server.inject({
@@ -111,10 +99,10 @@ describe('Account — DELETE /api/auth/account', () => {
       headers: { authorization: `Bearer ${a.accessToken}` },
     });
 
-    // Friendship + notifications of the deleted account disappear too; the
+    // Follows + notifications of the deleted account disappear too; the
     // other user remains intact.
-    expect(await prisma.friendship.count({
-      where: { OR: [{ userOneId: a.id }, { userTwoId: a.id }] },
+    expect(await prisma.follow.count({
+      where: { OR: [{ followerId: a.id }, { followingId: a.id }] },
     })).toBe(0);
     expect(await prisma.notification.count({
       where: { OR: [{ recipientId: a.id }, { actorId: a.id }] },

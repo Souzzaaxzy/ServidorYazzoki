@@ -95,3 +95,33 @@ export async function createAndLoginUser(
     refreshToken: auth.refreshToken,
   };
 }
+
+/**
+ * Makes [follower] follow [following] (instant, no approval). Used by tests
+ * that need two users able to interact (DM / group) — the follow graph
+ * replaced the old mutual-friendship prerequisite.
+ */
+export async function follow(
+  server: FastifyInstance,
+  follower: { id: string; accessToken: string },
+  following: { id: string },
+): Promise<void> {
+  const res = await server.inject({
+    method: 'POST',
+    url: `/api/users/${following.id}/follow`,
+    headers: { authorization: `Bearer ${follower.accessToken}` },
+  });
+  if (res.statusCode !== 204) {
+    throw new Error(`follow failed: ${res.statusCode} ${res.payload}`);
+  }
+}
+
+/** Two users follow EACH OTHER (the old "become friends" shortcut). */
+export async function followEachOther(
+  server: FastifyInstance,
+  a: { id: string; accessToken: string },
+  b: { id: string; accessToken: string },
+): Promise<void> {
+  await follow(server, a, b);
+  await follow(server, b, a);
+}

@@ -93,9 +93,7 @@ describe('presence in chat payloads', () => {
     const a = await createAndLoginUser(server, { nickname: 'pres_a' });
     const b = await createAndLoginUser(server, { nickname: 'pres_b' });
     // Amizade é exigida para abrir conversa.
-    await prisma.friendship.create({
-      data: { userOneId: a.id < b.id ? a.id : b.id, userTwoId: a.id < b.id ? b.id : a.id },
-    });
+    await prisma.follow.createMany({ data: [{ followerId: a.id < b.id ? a.id : b.id, followingId: a.id < b.id ? b.id : a.id }, { followerId: a.id < b.id ? b.id : a.id, followingId: a.id < b.id ? a.id : b.id } ] });
     const created = await server.inject({
       method: 'POST',
       url: `/api/conversations/${b.id}`,
@@ -132,12 +130,7 @@ describe('presence in chat payloads', () => {
     const m1 = await createAndLoginUser(server, { nickname: 'pres_m1' });
     const m2 = await createAndLoginUser(server, { nickname: 'pres_m2' });
     for (const friend of [m1, m2]) {
-      await prisma.friendship.create({
-        data: {
-          userOneId: owner.id < friend.id ? owner.id : friend.id,
-          userTwoId: owner.id < friend.id ? friend.id : owner.id,
-        },
-      });
+      await prisma.follow.createMany({ data: [{ followerId: owner.id < friend.id ? owner.id : friend.id, followingId: owner.id < friend.id ? friend.id : owner.id }, { followerId: owner.id < friend.id ? friend.id : owner.id, followingId: owner.id < friend.id ? owner.id : friend.id } ] });
     }
 
     const created = await server.inject({
@@ -196,9 +189,7 @@ describe('presence fan-out', () => {
   it('tells the DM peer when a user comes online and goes away', async () => {
     const a = await createAndLoginUser(server, { nickname: 'fan_a' });
     const b = await createAndLoginUser(server, { nickname: 'fan_b' });
-    await prisma.friendship.create({
-      data: { userOneId: a.id < b.id ? a.id : b.id, userTwoId: a.id < b.id ? b.id : a.id },
-    });
+    await prisma.follow.createMany({ data: [{ followerId: a.id < b.id ? a.id : b.id, followingId: a.id < b.id ? b.id : a.id }, { followerId: a.id < b.id ? b.id : a.id, followingId: a.id < b.id ? a.id : b.id } ] });
     await server.inject({
       method: 'POST',
       url: `/api/conversations/${b.id}`,
@@ -228,12 +219,7 @@ describe('presence fan-out', () => {
   it('carries the RECOMPUTED group online count to shared groups', async () => {
     const owner = await createAndLoginUser(server, { nickname: 'fan_owner' });
     const member = await createAndLoginUser(server, { nickname: 'fan_member' });
-    await prisma.friendship.create({
-      data: {
-        userOneId: owner.id < member.id ? owner.id : member.id,
-        userTwoId: owner.id < member.id ? member.id : owner.id,
-      },
-    });
+    await prisma.follow.createMany({ data: [{ followerId: owner.id < member.id ? owner.id : member.id, followingId: owner.id < member.id ? member.id : owner.id }, { followerId: owner.id < member.id ? member.id : owner.id, followingId: owner.id < member.id ? owner.id : member.id } ] });
     const created = await server.inject({
       method: 'POST',
       url: '/api/groups',
@@ -260,9 +246,7 @@ describe('presence fan-out', () => {
   it('does not re-announce an unchanged state (debounced)', async () => {
     const a = await createAndLoginUser(server, { nickname: 'fan_same' });
     const b = await createAndLoginUser(server, { nickname: 'fan_same2' });
-    await prisma.friendship.create({
-      data: { userOneId: a.id < b.id ? a.id : b.id, userTwoId: a.id < b.id ? b.id : a.id },
-    });
+    await prisma.follow.createMany({ data: [{ followerId: a.id < b.id ? a.id : b.id, followingId: a.id < b.id ? b.id : a.id }, { followerId: a.id < b.id ? b.id : a.id, followingId: a.id < b.id ? a.id : b.id } ] });
     // A audiência vem das CONVERSAS (é nelas que a bolinha aparece), então o
     // teste precisa de uma conversa real — não só da amizade.
     await server.inject({

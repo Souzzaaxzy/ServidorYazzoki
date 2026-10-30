@@ -13,8 +13,8 @@
 //   frame/banner/badge never requires a new APK.
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated"
+  provider   = "prisma-client-js"
+  output     = "../src/generated"
   // Rust-free query compiler: Prisma Client runs entirely in JS/WASM and talks
   // to the database through a driver adapter (see src/db/node-sqlite-adapter.ts).
   // This is what makes the API run on Android/Termux: Prisma ships no bionic
@@ -74,25 +74,23 @@ model User {
   sessions     Session[]
   devices      Device[]
 
-  sentFriendRequests     FriendRequest[] @relation("sentFriendRequests")
-  receivedFriendRequests FriendRequest[] @relation("receivedFriendRequests")
-  friendshipOnes         Friendship[]    @relation("friendshipOne")
-  friendshipTwos         Friendship[]    @relation("friendshipTwo")
+  followers Follow[] @relation("followers")
+  following Follow[] @relation("following")
 
-  conversationOnes      Conversation[] @relation("conversationOne")
-  conversationTwos      Conversation[] @relation("conversationTwo")
-  sentMessages          Message[]      @relation("sentMessages")
-  deletedMessages       Message[]      @relation("messageDeleter")
+  conversationOnes      Conversation[]       @relation("conversationOne")
+  conversationTwos      Conversation[]       @relation("conversationTwo")
+  sentMessages          Message[]            @relation("sentMessages")
+  deletedMessages       Message[]            @relation("messageDeleter")
   hiddenMessages        MessageHide[]
   hiddenConversations   ConversationHidden[]
-  createdGroups         Group[]        @relation("groupCreator")
+  createdGroups         Group[]              @relation("groupCreator")
   groupMemberships      GroupMember[]
   hiddenGroups          GroupHidden[]
   messageMentions       MessageMention[]
   messageReads          MessageRead[]
   messageDeliveries     MessageDelivery[]
-  notificationsReceived Notification[] @relation("notificationsReceived")
-  notificationsSent     Notification[] @relation("notificationsSent")
+  notificationsReceived Notification[]       @relation("notificationsReceived")
+  notificationsSent     Notification[]       @relation("notificationsSent")
 
   xpTransactions    XpTransaction[]
   coinTransactions  CoinTransaction[]
@@ -115,23 +113,23 @@ model User {
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  userId    String
-  text      String?
-  imageUrl  String?
+  id           String   @id @default(cuid())
+  userId       String
+  text         String?
+  imageUrl     String?
   // Video publication: when set the post's media is a VIDEO (uploaded via
   // /api/uploads/video and served from /static/video/...). imageUrl stays
   // for image posts; exactly one media slot is used at a time on the client
   // (text-only posts keep both null). Kept as a separate nullable column so
   // existing image posts are fully untouched.
-  videoUrl  String?
+  videoUrl     String?
   // Cover/thumbnail of a VIDEO post (generated client-side from the video and
   // uploaded like an image; served via /static/...). Null for image/text
   // posts and for OLD videos without a cover (the app falls back to a dark
   // tile + play badge). Persisted so the cover survives restarts/reloads.
   thumbnailUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes    Like[]
@@ -312,64 +310,46 @@ model Device {
   @@map("devices")
 }
 
-// ── Social: friend requests, friendships & notifications ──────
-// FriendRequest tracks the pending/accepted/rejected lifecycle. The pair
-// (senderId, receiverId) is unique, so duplicate requests are impossible.
-// On REJECT the row is deleted (allowing a future retry); on ACCEPT a
-// Friendship row is created.
+// ── Social: follow graph & notifications ─────────────────────
+// The old mutual "friendship" model was replaced by the Instagram-style
+// directed follow graph (see the Follow model below). Chat/groups now gate
+// on "either side follows the other" instead of an accepted friendship.
 
-model FriendRequest {
-  id         String   @id @default(cuid())
-  senderId   String
-  receiverId String
-  // PENDING | ACCEPTED | REJECTED (plain string — SQLite has no enums).
-  status     String   @default("PENDING")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+// Follow is a DIRECTED edge: followerId → followingId. Unlike the old
+// Friendship (an unordered pair), each direction is its own row, so the
+// Instagram model (following / followers, follow-back, unfollow) is
+// represented exactly and "seguir de volta" is just the reverse row.
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
 
-  sender   User @relation("sentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("receivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  follower  User @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
 
-  notifications Notification[]
-
-  @@unique([senderId, receiverId])
-  @@index([receiverId, status])
-  @@map("friend_requests")
-}
-
-// Friendship stores a single unordered pair (ids sorted at insert) so
-// A→B and B→A never duplicate. The relation is mutual by construction.
-model Friendship {
-  id        String   @id @default(cuid())
-  userOneId String
-  userTwoId String
-  createdAt DateTime @default(now())
-
-  userOne User @relation("friendshipOne", fields: [userOneId], references: [id], onDelete: Cascade)
-  userTwo User @relation("friendshipTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
-
-  @@unique([userOneId, userTwoId])
-  @@map("friendships")
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@index([followerId])
+  @@map("follows")
 }
 
 // Notifications are persistent (SQLite) and always scoped to their
-// recipient. postId/commentId/friendRequestId point at the related entity
-// when relevant, otherwise stay null.
+// recipient. postId/commentId point at the related entity when relevant,
+// otherwise stay null.
 model Notification {
-  id              String   @id @default(cuid())
-  recipientId     String
-  actorId         String
-  // LIKE | COMMENT | FRIEND_REQUEST | FRIEND_ACCEPTED (extensible).
-  type            String
-  postId          String?
-  commentId       String?
-  friendRequestId String?
-  read            Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  id          String   @id @default(cuid())
+  recipientId String
+  actorId     String
+  // LIKE | COMMENT | FOLLOW (extensible).
+  type        String
+  postId      String?
+  commentId   String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
-  recipient     User           @relation("notificationsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
-  actor         User           @relation("notificationsSent", fields: [actorId], references: [id], onDelete: Cascade)
-  friendRequest FriendRequest? @relation(fields: [friendRequestId], references: [id], onDelete: Cascade)
+  recipient User @relation("notificationsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User @relation("notificationsSent", fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, read])
   @@index([createdAt])
@@ -394,8 +374,8 @@ model Conversation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userOne  User      @relation("conversationOne", fields: [userOneId], references: [id], onDelete: Cascade)
-  userTwo  User      @relation("conversationTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
+  userOne  User                 @relation("conversationOne", fields: [userOneId], references: [id], onDelete: Cascade)
+  userTwo  User                 @relation("conversationTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
   messages Message[]
   hiddenBy ConversationHidden[]
 
@@ -406,24 +386,24 @@ model Conversation {
 }
 
 model Message {
-  id             String    @id @default(cuid())
+  id             String  @id @default(cuid())
   // DM messages carry the conversation; GROUP messages carry the group.
   // Exactly one of the two is set (never both).
   conversationId String?
   groupId        String?
   // The sender is ALWAYS the authenticated user — never client-supplied.
 
-  senderId       String
+  senderId         String
   // The message text. For VOICE messages this is the transcription/empty
   // label ("🎤 Áudio" is the literal stored content the app renders); for
   // text messages it is the actual content. Kept non-null for historical
   // compatibility — voice messages store a stable preview string here.
-  content        String
-  createdAt      DateTime  @default(now())
+  content          String
+  createdAt        DateTime  @default(now())
   // Set when the recipient marks the conversation read; null = not yet read
   // by the other side. Not per-message read receipts — just enough for the
   // "non lidas" badge (count messages where the other side hasn't read).
-  readAt         DateTime?
+  readAt           DateTime?
   // Reply support: when replying, the id of the SAME-conversation message
   // being answered. Only the reference is stored (never the original
   // content); the server resolves the preview at load time and degrades
@@ -436,11 +416,11 @@ model Message {
   // "video", `content` holds a stable preview label, and the real file URL
   // is stored in imageUrl/videoUrl (uploaded via the standard upload
   // endpoints; validated server-side).
-  type         String?
-  audioUrl     String?
-  durationMs   Int?
-  imageUrl     String?
-  videoUrl     String?
+  type             String?
+  audioUrl         String?
+  durationMs       Int?
+  imageUrl         String?
+  videoUrl         String?
   // STICKER messages: `type` is "sticker", `content` holds a stable preview
   // label ("🧩 Figurinha"), and the file reference lives in `stickerUrl`.
   // `stickerId`/`stickerPackageId` identify WHICH sticker was sent so the
@@ -448,40 +428,40 @@ model Message {
   // package was removed locally. The sticker file itself is persisted
   // server-side (never deleted with the package), so old history always
   // keeps rendering the image.
-  stickerUrl     String?
-  stickerId      String?
+  stickerUrl       String?
+  stickerId        String?
   stickerPackageId String?
   // STORY REPLY messages: `type` is "story_reply", `content` is the reply
   // text, and the original story is referenced by `storyId` PLUS a snapshot
   // (type/thumbnail/text preview). The snapshot is intentional: a story
   // expires after 24h, and the message must keep rendering that reference
   // without breaking the chat (no full media copy is stored — just the ref).
-  storyId        String?
-  storyType      String?
-  storyThumbUrl  String?
-  storyPreview   String?
+  storyId          String?
+  storyType        String?
+  storyThumbUrl    String?
+  storyPreview     String?
 
   // Soft-delete marker for "Excluir para todos". When set, the message is
   // hidden for BOTH participants (all read paths filter it out). The row + a
   // snapshot of the original content are kept for audit and so replies that
   // point at this message still resolve a `exists:false` placeholder.
   // `deletedById` records WHO deleted it (always the sender or a valid peer).
-  deletedAt    DateTime?
-  deletedById  String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // Per-user "Excluir para mim": each participant can hide the message for
   // themselves only (the peer keeps seeing it). One-to-many join rows.
-  hiddenBy     MessageHide[]
-  mentions     MessageMention[]
-  readBy       MessageRead[]
-  deliveredTo  MessageDelivery[]
+  hiddenBy    MessageHide[]
+  mentions    MessageMention[]
+  readBy      MessageRead[]
+  deliveredTo MessageDelivery[]
 
   conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   group        Group?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sender       User         @relation("sentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo      Message?     @relation("messageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
-  replies      Message[]    @relation("messageReplies")
-  deleter      User?        @relation("messageDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  sender       User          @relation("sentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?      @relation("messageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies      Message[]     @relation("messageReplies")
+  deleter      User?         @relation("messageDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
 
   @@index([conversationId, createdAt])
   @@index([groupId, createdAt])
@@ -499,18 +479,18 @@ model Message {
 // on every read/write; participants must be accepted friends of the creator at
 // creation time (server-validated).
 model Group {
-  id           String   @id @default(cuid())
-  name         String
-  description   String   @default("")
-  avatarUrl    String?
-  createdById  String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  avatarUrl   String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   creator  User          @relation("groupCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  members   GroupMember[]
-  hiddenBy  GroupHidden[]
-  messages   Message[]
+  members  GroupMember[]
+  hiddenBy GroupHidden[]
+  messages Message[]
 
   @@index([createdById])
   @@map("groups")
@@ -523,13 +503,13 @@ model Group {
 // all read/write paths enforce [bannedAt: null]. The OWNER can never be
 // banned (server-enforced regardless of the caller).
 model GroupMember {
-  id           String    @id @default(cuid())
-  groupId     String
-  userId      String
-  role        String    @default("MEMBER")
-  joinedAt    DateTime   @default(now())
-  bannedAt    DateTime?
-  bannedById  String?
+  id         String    @id @default(cuid())
+  groupId    String
+  userId     String
+  role       String    @default("MEMBER")
+  joinedAt   DateTime  @default(now())
+  bannedAt   DateTime?
+  bannedById String?
 
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -542,8 +522,8 @@ model GroupMember {
 // "Excluir grupo (para mim)" — hides a group from ONE user's Chat list.
 model GroupHidden {
   id        String   @id @default(cuid())
-  groupId  String
-  userId   String
+  groupId   String
+  userId    String
   createdAt DateTime @default(now())
 
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -560,18 +540,18 @@ model GroupHidden {
 // `@todos` is stored with mentionAll=true and NO userId rows (it targets
 // every active member eligible at read time).
 model MessageMention {
-  id        String   @id @default(cuid())
-  messageId String
+  id         String   @id @default(cuid())
+  messageId  String
   // Real user id of the mentioned member. NULL for the `@todos` row
   // (mentionAll=true) — that targets every eligible active member.
-  userId    String?
+  userId     String?
   // true when this row represents `@todos` (userId is null).
   mentionAll Boolean  @default(false)
   // Exact token range ("@Nickname"/"@todos") inside the message content.
   // NULL for mentions persisted before this field existed (legacy rows).
   rangeStart Int?
   rangeEnd   Int?
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -622,14 +602,13 @@ model MessageDelivery {
   @@map("message_deliveries")
 }
 
-
 // "Excluir mensagem para mim" — a viewer-specific soft-delete. Each row says
 // "this message is hidden for THIS user (but still visible to the peer)".
 model MessageHide {
-  id             String   @id @default(cuid())
-  messageId      String
-  userId         String
-  createdAt      DateTime @default(now())
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
 
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -901,25 +880,25 @@ model MusicVote {
 model ProfileMusic {
   // The owner. Using the userId as the primary key enforces "one song per
   // profile" at the database level, not just in the service.
-  userId        String   @id
-  title         String
-  artist        String
-  coverUrl      String?
-  audioUrl      String
+  userId         String   @id
+  title          String
+  artist         String
+  coverUrl       String?
+  audioUrl       String
   // Excerpt length actually stored (milliseconds), capped server-side.
-  durationMs    Int
+  durationMs     Int
   // Start offset of the excerpt within the source track (milliseconds) —
   // lets the UI show "1:12 - 2:12" and lets a re-cut reuse the same source.
-  startMs       Int      @default(0)
+  startMs        Int      @default(0)
   // True when the stored FILE is the WHOLE track and the player must play
   // only the [startMs, startMs+durationMs) window. This is the no-ffmpeg
   // path: without ffmpeg we cannot cut the audio, so the app seeks instead.
   // False when the file already IS the excerpt (the ffmpeg path).
-  playWindowOnly Boolean @default(false)
-  sourceId      String
-  sourceUrl     String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  playWindowOnly Boolean  @default(false)
+  sourceId       String
+  sourceUrl      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1046,8 +1025,8 @@ model StickerPackage {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  stickers   Sticker[]
-  installs   UserStickerPackage[]
+  stickers Sticker[]
+  installs UserStickerPackage[]
 
   @@index([active])
   @@index([authorId])

@@ -16,29 +16,23 @@ export const UserRole = {
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
-export const FriendRequestStatus = {
-  PENDING: 'PENDING',
-  ACCEPTED: 'ACCEPTED',
-  REJECTED: 'REJECTED',
-} as const;
-export type FriendRequestStatus =
-  (typeof FriendRequestStatus)[keyof typeof FriendRequestStatus];
-
-// Friendship relationship as seen by the viewer on a other user's profile.
-export const FriendshipState = {
+// Follow relationship as seen by the viewer on another user's profile.
+// The Instagram model has no approval step: either you follow them or not.
+export const FollowState = {
   NONE: 'NONE',
-  OUTGOING_PENDING: 'OUTGOING_PENDING',
-  INCOMING_PENDING: 'INCOMING_PENDING',
-  FRIENDS: 'FRIENDS',
+  /** Viewer follows the profile owner. */
+  FOLLOWING: 'FOLLOWING',
+  /** Profile owner follows the viewer, but not the other way around. */
+  FOLLOWS_YOU: 'FOLLOWS_YOU',
+  /** Both directions — the "Seguindo" state with a "Seguir de volta" hint. */
+  MUTUAL: 'MUTUAL',
 } as const;
-export type FriendshipState =
-  (typeof FriendshipState)[keyof typeof FriendshipState];
+export type FollowState = (typeof FollowState)[keyof typeof FollowState];
 
 export const NotificationType = {
   LIKE: 'LIKE',
   COMMENT: 'COMMENT',
-  FRIEND_REQUEST: 'FRIEND_REQUEST',
-  FRIEND_ACCEPTED: 'FRIEND_ACCEPTED',
+  FOLLOW: 'FOLLOW',
 } as const;
 export type NotificationType =
   (typeof NotificationType)[keyof typeof NotificationType];

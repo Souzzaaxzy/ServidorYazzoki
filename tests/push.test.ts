@@ -24,15 +24,12 @@ describe('Push message composition', () => {
   it('renders the canonical PT-BR body for each notification type', () => {
     expect(composeBody('LIKE', 'joao')).toBe('joao curtiu sua publicação.');
     expect(composeBody('COMMENT', 'joao')).toBe('joao comentou na sua publicação.');
-    expect(composeBody('FRIEND_REQUEST', 'joao')).toBe(
-      'joao enviou uma solicitação de amizade.',
-    );
-    expect(composeBody('FRIEND_ACCEPTED', 'joao')).toBe('Agora você e joao são amigos.');
+    expect(composeBody('FOLLOW', 'joao')).toBe('joao começou a seguir você.');
   });
 
   it('buildMessage embeds routing data for the client', () => {
     const message = buildMessage(
-      { id: 'n1', type: 'LIKE', postId: 'p9', commentId: null, friendRequestId: null },
+      { id: 'n1', type: 'LIKE', postId: 'p9', commentId: null },
       'joao',
     );
     expect(message.kind).toBe('notification');
@@ -130,7 +127,6 @@ describe('Dispatch pipeline', () => {
         type: 'LIKE',
         postId: 'p1',
         commentId: null,
-        friendRequestId: null,
       });
       expect(sent).toBe(true);
       for (const socket of [socketA, socketB]) {
@@ -154,7 +150,6 @@ describe('Dispatch pipeline', () => {
       type: 'COMMENT',
       postId: 'p7',
       commentId: 'c9',
-      friendRequestId: null,
     };
     expect(await dispatchNotification(userId, notification)).toBe(true);
     expect(await dispatchNotification(userId, notification)).toBe(false);

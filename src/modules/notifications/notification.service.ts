@@ -4,7 +4,6 @@ import { AUTHOR_SELECT, toNotificationItem, type NotificationItem } from '../../
 
 const NOTIFICATION_INCLUDE = {
   actor: { select: AUTHOR_SELECT },
-  friendRequest: { select: { id: true, status: true } },
 } as const;
 
 export interface NotificationPage {

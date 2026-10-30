@@ -41,9 +41,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Cria amizade + conversa entre dois usuários (o app exige ambos). */
 async function connect(a: { id: string }, b: { id: string }, token: string) {
   const [one, two] = a.id < b.id ? [a.id, b.id] : [b.id, a.id];
-  await prisma.friendship.create({
-    data: { userOneId: one, userTwoId: two },
-  });
+  await prisma.follow.createMany({ data: [{ followerId: one, followingId: two }, { followerId: two, followingId: one } ] });
   await server.inject({
     method: 'POST',
     url: `/api/conversations/${a.id}`,
@@ -160,9 +158,7 @@ describe('presence over the real WebSocket', () => {
     const owner = await createAndLoginUser(server, { nickname: 'ws_grp_owner' });
     const member = await createAndLoginUser(server, { nickname: 'ws_grp_member' });
     const [one, two] = owner.id < member.id ? [owner.id, member.id] : [member.id, owner.id];
-    await prisma.friendship.create({
-      data: { userOneId: one, userTwoId: two },
-    });
+    await prisma.follow.createMany({ data: [{ followerId: one, followingId: two }, { followerId: two, followingId: one } ] });
     const created = await server.inject({
       method: 'POST',
       url: '/api/groups',

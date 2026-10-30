@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { buildTestServer, closeTestServer, createAndLoginUser } from './helpers.js';
+import { buildTestServer, closeTestServer, createAndLoginUser, followEachOther } from './helpers.js';
 import { prisma } from '../src/config/prisma.js';
 import type { FastifyInstance } from 'fastify';
 import { addSocket, removeSocket } from '../src/modules/push/push.service.js';
@@ -15,17 +15,9 @@ afterAll(async () => {
 });
 
 async function makeFriends(a: { id: string; accessToken: string }, b: { id: string; accessToken: string }) {
-  const send = await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${b.id}`,
-    headers: { authorization: `Bearer ${a.accessToken}` },
-  });
-  const request = JSON.parse(send.payload);
-  await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${request.id}/accept`,
-    headers: { authorization: `Bearer ${b.accessToken}` },
-  });
+  // The follow graph replaced mutual friendship: two reciprocal follows give
+  // the pair the same ability to interact (DM / group) as friends had.
+  await followEachOther(server, a, b);
 }
 
 async function openConversation(a: { accessToken: string }, b: { id: string }) {

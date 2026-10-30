@@ -54,11 +54,12 @@ function multipartBody(fileBytes: Buffer, filename: string): Buffer {
 }
 
 async function makeFriends(a: { id: string }, b: { id: string }) {
-  await prisma.friendship.create({
-    data: {
-      userOneId: a.id < b.id ? a.id : b.id,
-      userTwoId: a.id < b.id ? b.id : a.id,
-    },
+  // Two reciprocal follows == the old mutual friendship (chat gate).
+  await prisma.follow.createMany({
+    data: [
+      { followerId: a.id, followingId: b.id },
+      { followerId: b.id, followingId: a.id },
+    ],
   });
 }
 

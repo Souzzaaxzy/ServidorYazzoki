@@ -3,13 +3,13 @@ import { ApiError, toApiError } from '../../utils/errors.js';
 import { nicknameKey, normalizeNickname } from '../../utils/normalize.js';
 import { parsePublicId } from '../../utils/public-id.js';
 import { AUTHOR_SELECT, toAuthUser, toFeedPost, toProfileUser, type AuthUser, type FeedPost, type ProfileUser } from '../../utils/dto.js';
-import { getFriendshipState } from '../friends/friend.service.js';
-import type { FriendshipState } from '../../types/enums.js';
+import { followCounts, getFollowState } from '../follow/follow.service.js';
+import type { FollowState } from '../../types/enums.js';
 
 export async function getProfile(
   nickname: string,
   currentUserId?: string,
-): Promise<{ user: ProfileUser; posts: FeedPost[]; friendship: FriendshipState | null }> {
+): Promise<{ user: ProfileUser; posts: FeedPost[]; follow: FollowState | null }> {
   // The profile resolves by nickname (case-insensitively, through the
   // nickname key) OR by the public `#id` (e.g. `#00000001`) — so a profile
   // can be opened straight from an id shown anywhere in the app.
@@ -37,24 +37,20 @@ export async function getProfile(
     },
   });
   if (!user) throw ApiError.notFound('Usuário não encontrado.');
-  // Real counters: postsCount = all posts of this user; friendsCount =
-  // accepted friendships only (pending/rejected requests never count).
-  const [postsCount, friendsCount] = await prisma.$transaction([
-    prisma.post.count({ where: { userId: user.id } }),
-    prisma.friendship.count({
-      where: { OR: [{ userOneId: user.id }, { userTwoId: user.id }] },
-    }),
-  ]);
-  // The friendship state is only meaningful for an authenticated viewer
-  // looking at someone else's profile — the APK never asks for its own.
-  let friendship: FriendshipState | null = null;
+  // Real counters: postsCount = all posts of this user; the social counters
+  // (followers / following / total likes) come from the follow graph.
+  const postsCount = await prisma.post.count({ where: { userId: user.id } });
+  const counts = await followCounts(user.id);
+  // The follow state is only meaningful for an authenticated viewer looking
+  // at someone else's profile — the APK never asks for its own.
+  let follow: FollowState | null = null;
   if (currentUserId && currentUserId !== user.id) {
-    friendship = await getFriendshipState(currentUserId, user.id);
+    follow = await getFollowState(currentUserId, user.id);
   }
   return {
-    user: toProfileUser(user, { friendsCount, postsCount }),
+    user: toProfileUser(user, { ...counts, postsCount }),
     posts: user.posts.map((p) => toFeedPost(p, currentUserId)),
-    friendship,
+    follow,
   };
 }
 

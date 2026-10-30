@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 
 import { prisma } from '../src/config/prisma.js';
-import { buildTestServer, closeTestServer, createAndLoginUser } from './helpers.js';
+import { buildTestServer, closeTestServer, createAndLoginUser, followEachOther } from './helpers.js';
 import {
   purgeDeliveredMessages,
   DELIVERED_RETENTION_MS,
@@ -23,17 +23,8 @@ async function makeFriends(
   a: { id: string; accessToken: string },
   b: { id: string; accessToken: string },
 ) {
-  const send = await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${b.id}`,
-    headers: { authorization: `Bearer ${a.accessToken}` },
-  });
-  const request = JSON.parse(send.payload);
-  await server.inject({
-    method: 'POST',
-    url: `/api/friend-requests/${request.id}/accept`,
-    headers: { authorization: `Bearer ${b.accessToken}` },
-  });
+  // Follow graph replaced mutual friendship (chat gates on a follow).
+  await followEachOther(server, a, b);
 }
 
 async function dmBetween(

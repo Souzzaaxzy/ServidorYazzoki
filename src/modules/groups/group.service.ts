@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/errors.js';
 import { AUTHOR_SELECT } from '../../utils/dto.js';
-import { areFriends } from '../friends/friend.service.js';
+import { areFriends } from '../follow/follow.service.js';
 import { deleteLocalFileByUrl, saveAudioFile } from '../uploads/upload.service.js';
 import {
   dispatchChatGroupBanned,
@@ -349,7 +349,7 @@ export async function createGroup(
     const exists = await prisma.user.findUnique({ where: { id }, select: { id: true } });
     if (!exists) throw ApiError.notFound('Participante não encontrado.');
     if (!(await areFriends(userId, id))) {
-      throw ApiError.forbidden('Todos os participantes precisam ser seus amigos.');
+      throw ApiError.forbidden('Todos os participantes precisam te seguir (ou você a eles).');
     }
   }
  
@@ -539,7 +539,7 @@ export async function addGroupMember(
   if (!user) throw ApiError.notFound('Usuário não encontrado.');
   if (!(await areFriends(userId, newUserId))) {
 
-    throw ApiError.forbidden('Você só pode adicionar amigos ao grupo.');
+    throw ApiError.forbidden('Você só pode adicionar pessoas que se seguem.');
   }
 
 

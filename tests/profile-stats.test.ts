@@ -12,12 +12,28 @@ afterAll(async () => {
   await closeTestServer();
 });
 
-describe('Profile counters (Amigos / Posts)', () => {
-  it('returns real postsCount and friendsCount for the viewed user', async () => {
+async function followReq(token: string, id: string) {
+  return server.inject({
+    method: 'POST',
+    url: `/api/users/${id}/follow`,
+    headers: { authorization: `Bearer ${token}` },
+  });
+}
+
+async function profileOf(nickname: string, token: string) {
+  const res = await server.inject({
+    method: 'GET',
+    url: `/api/users/${nickname}`,
+    headers: { authorization: `Bearer ${token}` },
+  });
+  return JSON.parse(res.payload);
+}
+
+describe('Profile counters (Seguidores / Seguindo / Curtidas / Posts)', () => {
+  it('returns real postsCount, followers and following for the viewed user', async () => {
     const a = await createAndLoginUser(server, { nickname: 'stats_a' });
     const b = await createAndLoginUser(server, { nickname: 'stats_b' });
 
-    // a creates two posts so the counter must be 2.
     for (const text of ['post one', 'post two']) {
       const res = await server.inject({
         method: 'POST',
@@ -28,38 +44,53 @@ describe('Profile counters (Amigos / Posts)', () => {
       expect(res.statusCode).toBe(201);
     }
 
-    // a and b become friends (accepted request) → counter must be 1.
-    const send = await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${b.id}`,
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    const request = JSON.parse(send.payload);
+    // b follows a → a has 1 follower, b has 0; b is following 1.
+    expect((await followReq(b.accessToken, a.id)).statusCode).toBe(204);
+
+    const body = await profileOf(a.nickname, b.accessToken);
+    expect(body.user.postsCount).toBe(2);
+    expect(body.user.followersCount).toBe(1);
+    expect(body.user.followingCount).toBe(0);
+    expect(body.user.likesCount).toBe(0);
+
+    const reverse = await profileOf('stats_b', a.accessToken);
+    expect(reverse.user.followersCount).toBe(0);
+    expect(reverse.user.followingCount).toBe(1);
+    expect(reverse.user.postsCount).toBe(0);
+  });
+
+  it('likesCount totals likes across ALL the user posts', async () => {
+    const a = await createAndLoginUser(server, { nickname: 'likes_a' });
+    const b = await createAndLoginUser(server, { nickname: 'likes_b' });
+    const c = await createAndLoginUser(server, { nickname: 'likes_c' });
+
+    const postIds: string[] = [];
+    for (const text of ['one', 'two']) {
+      const res = await server.inject({
+        method: 'POST',
+        url: '/api/posts',
+        headers: { authorization: `Bearer ${a.accessToken}` },
+        payload: { text },
+      });
+      postIds.push(JSON.parse(res.payload).id);
+    }
+
+    // b likes both posts, c likes one → 3 total likes on a's posts.
+    for (const id of postIds) {
+      await server.inject({
+        method: 'POST',
+        url: `/api/posts/${id}/like`,
+        headers: { authorization: `Bearer ${b.accessToken}` },
+      });
+    }
     await server.inject({
       method: 'POST',
-      url: `/api/friend-requests/${request.id}/accept`,
-      headers: { authorization: `Bearer ${b.accessToken}` },
+      url: `/api/posts/${postIds[0]}/like`,
+      headers: { authorization: `Bearer ${c.accessToken}` },
     });
 
-    const profile = await server.inject({
-      method: 'GET',
-      url: `/api/users/${a.nickname}`,
-      headers: { authorization: `Bearer ${b.accessToken}` },
-    });
-    expect(profile.statusCode).toBe(200);
-    const body = JSON.parse(profile.payload);
-    expect(body.user.postsCount).toBe(2);
-    expect(body.user.friendsCount).toBe(1);
-
-    // From b's perspective the same numbers are reciprocal.
-    const reverse = await server.inject({
-      method: 'GET',
-      url: '/api/users/stats_b',
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    const reverseBody = JSON.parse(reverse.payload);
-    expect(reverseBody.user.friendsCount).toBe(1);
-    expect(reverseBody.user.postsCount).toBe(0);
+    const body = await profileOf('likes_a', a.accessToken);
+    expect(body.user.likesCount).toBe(3);
   });
 
   it('posts count drops after deleting a post', async () => {
@@ -78,149 +109,70 @@ describe('Profile counters (Amigos / Posts)', () => {
       headers: { authorization: `Bearer ${a.accessToken}` },
     });
 
-    const profile = await server.inject({
-      method: 'GET',
-      url: '/api/users/delcount',
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    expect(JSON.parse(profile.payload).user.postsCount).toBe(0);
+    const body = await profileOf('delcount', a.accessToken);
+    expect(body.user.postsCount).toBe(0);
   });
 
-  it('pending friend requests do NOT count as friends', async () => {
-    const a = await createAndLoginUser(server, { nickname: 'pending_a' });
-    const b = await createAndLoginUser(server, { nickname: 'pending_b' });
-    await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${b.id}`,
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
+  it('profile reports the viewer follow state', async () => {
+    const a = await createAndLoginUser(server, { nickname: 'state_a' });
+    const b = await createAndLoginUser(server, { nickname: 'state_b' });
 
-    const profile = await server.inject({
-      method: 'GET',
-      url: '/api/users/pending_a',
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    expect(JSON.parse(profile.payload).user.friendsCount).toBe(0);
+    // Nothing yet → NONE.
+    expect((await profileOf('state_a', b.accessToken)).follow).toBe('NONE');
+
+    // b follows a → from b's view of a: FOLLOWING.
+    await followReq(b.accessToken, a.id);
+    expect((await profileOf('state_a', b.accessToken)).follow).toBe('FOLLOWING');
+
+    // a follows b back → MUTUAL from both sides.
+    await followReq(a.accessToken, b.id);
+    expect((await profileOf('state_a', b.accessToken)).follow).toBe('MUTUAL');
+    expect((await profileOf('state_b', a.accessToken)).follow).toBe('MUTUAL');
   });
 });
 
-describe('Friends list endpoint', () => {
-  it('lists accepted friends with real pagination data', async () => {
+describe('Followers / Following list endpoints', () => {
+  it('lists followers and following with real pagination', async () => {
     const a = await createAndLoginUser(server, { nickname: 'fl_a' });
     const b = await createAndLoginUser(server, { nickname: 'fl_b' });
     const c = await createAndLoginUser(server, { nickname: 'fl_c' });
 
-    for (const other of [b, c]) {
-      const send = await server.inject({
-        method: 'POST',
-        url: `/api/friend-requests/${other.id}`,
-        headers: { authorization: `Bearer ${a.accessToken}` },
-      });
-      const request = JSON.parse(send.payload);
-      await server.inject({
-        method: 'POST',
-        url: `/api/friend-requests/${request.id}/accept`,
-        headers: { authorization: `Bearer ${other.accessToken}` },
-      });
-    }
+    // b and c both follow a.
+    await followReq(b.accessToken, a.id);
+    await followReq(c.accessToken, a.id);
 
-    const page1 = await server.inject({
+    const followers = await server.inject({
       method: 'GET',
-      url: `/api/users/${a.id}/friends?page=1&pageSize=1`,
+      url: `/api/users/${a.id}/followers?page=1&pageSize=1`,
       headers: { authorization: `Bearer ${a.accessToken}` },
     });
-    const p1 = JSON.parse(page1.payload);
-    expect(p1.total).toBe(2);
-    expect(p1.friends).toHaveLength(1);
+    const f1 = JSON.parse(followers.payload);
+    expect(f1.total).toBe(2);
+    expect(f1.users).toHaveLength(1);
 
     const page2 = await server.inject({
       method: 'GET',
-      url: `/api/users/${a.id}/friends?page=2&pageSize=1`,
+      url: `/api/users/${a.id}/followers?page=2&pageSize=1`,
       headers: { authorization: `Bearer ${a.accessToken}` },
     });
-    const p2 = JSON.parse(page2.payload);
-    expect(p2.friends).toHaveLength(1);
+    expect(JSON.parse(page2.payload).users).toHaveLength(1);
 
-    // The two pages together must cover both friends, no matter the order.
-    const nicknames = [p1.friends[0].nickname, p2.friends[0].nickname].sort();
-    expect(nicknames).toEqual(['fl_b', 'fl_c']);
-  });
-
-  it('friend list of the OTHER user is visible (not limited to own list)', async () => {
-    const a = await createAndLoginUser(server, { nickname: 'vis_a' });
-    const b = await createAndLoginUser(server, { nickname: 'vis_b' });
-    const send = await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${b.id}`,
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    const request = JSON.parse(send.payload);
-    await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${request.id}/accept`,
-      headers: { authorization: `Bearer ${b.accessToken}` },
-    });
-
-    // a views b's list — must contain a.
-    const res = await server.inject({
+    // a follows nobody → following list is empty.
+    const following = await server.inject({
       method: 'GET',
-      url: `/api/users/${b.id}/friends`,
+      url: `/api/users/${a.id}/following`,
       headers: { authorization: `Bearer ${a.accessToken}` },
     });
-    const body = JSON.parse(res.payload);
-    expect(body.friends.map((f: { nickname: string }) => f.nickname)).toContain('vis_a');
-  });
+    expect(JSON.parse(following.payload).total).toBe(0);
 
-  it('only accepted friendships appear (pending never leaks)', async () => {
-    const a = await createAndLoginUser(server, { nickname: 'clean_a' });
-    const b = await createAndLoginUser(server, { nickname: 'clean_b' });
-    await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${b.id}`,
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-
-    const res = await server.inject({
+    // b's following list contains a.
+    const bFollowing = await server.inject({
       method: 'GET',
-      url: `/api/users/${a.id}/friends`,
+      url: `/api/users/${b.id}/following`,
       headers: { authorization: `Bearer ${a.accessToken}` },
     });
-    expect(JSON.parse(res.payload).friends).toHaveLength(0);
-  });
-});
-
-describe('Friend accept notifications (both sides)', () => {
-  it('creates FRIEND_ACCEPTED for the sender AND the acceptor', async () => {
-    const a = await createAndLoginUser(server, { nickname: 'both_a' });
-    const b = await createAndLoginUser(server, { nickname: 'both_b' });
-    const send = await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${b.id}`,
-      headers: { authorization: `Bearer ${a.accessToken}` },
-    });
-    const request = JSON.parse(send.payload);
-    await server.inject({
-      method: 'POST',
-      url: `/api/friend-requests/${request.id}/accept`,
-      headers: { authorization: `Bearer ${b.accessToken}` },
-    });
-
-    // sender a is notified that b accepted.
-    const forSender = await prisma.notification.findFirst({
-      where: { recipientId: a.id, actorId: b.id, type: 'FRIEND_ACCEPTED' },
-    });
-    expect(forSender).not.toBeNull();
-
-    // acceptor b ALSO gets a persistent entry about a.
-    const forAcceptor = await prisma.notification.findFirst({
-      where: { recipientId: b.id, actorId: a.id, type: 'FRIEND_ACCEPTED' },
-    });
-    expect(forAcceptor).not.toBeNull();
-
-    // And the actionable FRIEND_REQUEST card is gone.
-    const requestNotes = await prisma.notification.count({
-      where: { friendRequestId: request.id },
-    });
-    expect(requestNotes).toBe(0);
+    expect(
+      JSON.parse(bFollowing.payload).users.map((u: { nickname: string }) => u.nickname),
+    ).toContain('fl_a');
   });
 });

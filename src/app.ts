@@ -28,7 +28,7 @@ import { callRoutes } from './modules/calls/call.routes.js';
 import { akameRoutes } from './modules/akame/akame.routes.js';
 import { configRoutes } from './modules/config/config.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
-import { friendRoutes } from './modules/friends/friend.routes.js';
+import { followRoutes } from './modules/follow/follow.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
 import { groupRoutes } from './modules/groups/group.routes.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
@@ -150,7 +150,7 @@ export async function buildServer() {
   await app.register(likeRoutes, { prefix: '/api' });
   await app.register(commentRoutes, { prefix: '/api' });
   await app.register(userRoutes, { prefix: '/api' });
-  await app.register(friendRoutes, { prefix: '/api' });
+  await app.register(followRoutes, { prefix: '/api' });
   await app.register(chatRoutes, { prefix: '/api' });
   await app.register(groupRoutes, { prefix: '/api' });
   await app.register(notificationRoutes, { prefix: '/api' });

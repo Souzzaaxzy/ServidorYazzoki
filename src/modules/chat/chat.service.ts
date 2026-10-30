@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma.js';
 import { ApiError } from '../../utils/errors.js';
 import { AUTHOR_SELECT } from '../../utils/dto.js';
-import { areFriends } from '../friends/friend.service.js';
+import { areFriends } from '../follow/follow.service.js';
 import { saveAudioFile } from '../uploads/upload.service.js';
 import {
   dispatchChatMessage,
@@ -158,7 +158,8 @@ async function ensureRecipient(otherUserId: string): Promise<void> {
 }
 
 // ── Get-or-create a conversation with another user ───────────
-// Only accepted friends may start a private conversation. Returns the
+// Only users connected by a follow (either direction) may start a private
+// conversation. Returns the
 // existing conversation when one already exists — never creates duplicates.
 export async function getOrCreateConversation(
   userId: string,
@@ -170,7 +171,7 @@ export async function getOrCreateConversation(
   await ensureRecipient(otherUserId);
   const friends = await areFriends(userId, otherUserId);
   if (!friends) {
-    throw ApiError.forbidden('Vocês precisam ser amigos para iniciar uma conversa.');
+    throw ApiError.forbidden('Vocês precisam se seguir para iniciar uma conversa.');
   }
   const [one, two] = orderedPair(userId, otherUserId);
   let conversation = await prisma.conversation.findUnique({
