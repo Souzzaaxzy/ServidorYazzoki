@@ -16,6 +16,17 @@ const FEED_INCLUDE = {
       reposts: true,
     },
   },
+  // WHO reposted (newest first, capped) — powers the "X repostou" badge.
+  // Capped so a viral post never inflates the payload.
+  reposts: {
+    orderBy: { createdAt: 'desc' },
+    take: 3,
+    select: {
+      userId: true,
+      createdAt: true,
+      user: { select: AUTHOR_SELECT },
+    },
+  },
 } as const;
 
 export async function createPost(
@@ -33,7 +44,11 @@ export async function createPost(
     include: {
       ...FEED_INCLUDE,
       likes: { where: { userId }, select: { userId: true } },
-      reposts: { where: { userId }, select: { userId: true } },
+      // Just-created: nobody reposted it yet.
+      reposts: {
+        where: { userId },
+        select: { userId: true },
+      },
     },
   });
 
@@ -74,20 +89,31 @@ export async function getFeed(
         },
       },
       ...(currentUserId
-        ? {
-            likes: { where: { userId: currentUserId }, select: { userId: true } },
-            reposts: { where: { userId: currentUserId }, select: { userId: true } },
-          }
+        ? { likes: { where: { userId: currentUserId }, select: { userId: true } } }
         : {}),
     },
   });
+
+  // Which of these posts the VIEWER reposted (one query, no N+1).
+  const viewerRepostedIds = currentUserId
+    ? new Set(
+        (
+          await prisma.repost.findMany({
+            where: { userId: currentUserId, postId: { in: posts.map((p) => p.id) } },
+            select: { postId: true },
+          })
+        ).map((r) => r.postId),
+      )
+    : new Set<string>();
 
   const hasMore = posts.length > limit;
   const slice = hasMore ? posts.slice(0, limit) : posts;
   const nextCursor = hasMore ? slice[slice.length - 1].createdAt.toISOString() : null;
 
   return {
-    posts: slice.map((p) => toFeedPost(p, currentUserId)),
+    posts: slice.map((p) =>
+      toFeedPost(p, currentUserId, viewerRepostedIds.has(p.id)),
+    ),
     nextCursor,
   };
 }
@@ -96,24 +122,20 @@ export async function getPostById(id: string, currentUserId?: string): Promise<F
   const post = await prisma.post.findUnique({
     where: { id },
     include: {
-      user: { select: AUTHOR_SELECT },
-      _count: {
-        select: {
-          likes: true,
-          comments: { where: { deletedAt: null } },
-          reposts: true,
-        },
-      },
+      ...FEED_INCLUDE,
       ...(currentUserId
-        ? {
-            likes: { where: { userId: currentUserId }, select: { userId: true } },
-            reposts: { where: { userId: currentUserId }, select: { userId: true } },
-          }
+        ? { likes: { where: { userId: currentUserId }, select: { userId: true } } }
         : {}),
     },
   });
   if (!post) throw ApiError.notFound('Publicação não encontrada.');
-  return toFeedPost(post, currentUserId);
+  const viewerReposted = currentUserId
+    ? (await prisma.repost.findUnique({
+        where: { userId_postId: { userId: currentUserId, postId: id } },
+        select: { id: true },
+      })) !== null
+    : false;
+  return toFeedPost(post, currentUserId, viewerReposted);
 }
 
 export async function deletePost(userId: string, postId: string): Promise<void> {

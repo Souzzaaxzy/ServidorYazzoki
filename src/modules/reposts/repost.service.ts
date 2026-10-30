@@ -133,6 +133,8 @@ export async function listReposts(
       skip: (safePage - 1) * safeSize,
       take: safeSize,
       include: {
+        // The REPOSTER (the profile owner) — for the "Repostado de @x" line.
+        user: { select: AUTHOR_SELECT },
         post: {
           include: {
             ...FEED_INCLUDE,
@@ -147,8 +149,15 @@ export async function listReposts(
   return {
     posts: rows.map((r) => ({
       ...toFeedPost(r.post, viewerId),
-      reposted: true,
-      repostCount: 0,
+      // The viewer IS the profile owner here, so their own repost is active.
+      reposted: viewerId === userId,
+      // Attribution for the "Repostado de @x" line: WHO reposted it.
+      repostedBy: {
+        id: r.user.id,
+        nickname: r.user.nickname,
+        avatarUrl: r.user.avatarUrl,
+        repostedAt: r.createdAt.toISOString(),
+      },
     })),
     total,
     page: safePage,

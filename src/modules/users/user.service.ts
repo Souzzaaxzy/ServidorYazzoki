@@ -29,11 +29,17 @@ export async function getProfile(
         include: {
           user: { select: AUTHOR_SELECT },
           _count: { select: { likes: true, comments: true, reposts: true } },
+          reposts: {
+            orderBy: { createdAt: 'desc' },
+            take: 3,
+            select: {
+              userId: true,
+              createdAt: true,
+              user: { select: AUTHOR_SELECT },
+            },
+          },
           ...(currentUserId
-            ? {
-                likes: { where: { userId: currentUserId }, select: { userId: true } },
-                reposts: { where: { userId: currentUserId }, select: { userId: true } },
-              }
+            ? { likes: { where: { userId: currentUserId }, select: { userId: true } } }
             : {}),
         },
       },
@@ -44,15 +50,32 @@ export async function getProfile(
   // (followers / following / total likes) come from the follow graph.
   const postsCount = await prisma.post.count({ where: { userId: user.id } });
   const counts = await followCounts(user.id);
+  const repostsCount = await prisma.repost.count({ where: { userId: user.id } });
   // The follow state is only meaningful for an authenticated viewer looking
   // at someone else's profile — the APK never asks for its own.
   let follow: FollowState | null = null;
   if (currentUserId && currentUserId !== user.id) {
     follow = await getFollowState(currentUserId, user.id);
   }
+  // Which of this user's posts the VIEWER reposted (one query, no N+1).
+  const viewerRepostedIds = currentUserId
+    ? new Set(
+        (
+          await prisma.repost.findMany({
+            where: {
+              userId: currentUserId,
+              postId: { in: user.posts.map((p) => p.id) },
+            },
+            select: { postId: true },
+          })
+        ).map((r) => r.postId),
+      )
+    : new Set<string>();
   return {
-    user: toProfileUser(user, { ...counts, postsCount }),
-    posts: user.posts.map((p) => toFeedPost(p, currentUserId)),
+    user: toProfileUser(user, { ...counts, postsCount, repostsCount }),
+    posts: user.posts.map((p) =>
+      toFeedPost(p, currentUserId, viewerRepostedIds.has(p.id)),
+    ),
     follow,
   };
 }

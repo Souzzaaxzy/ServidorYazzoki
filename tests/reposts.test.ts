@@ -127,6 +127,52 @@ describe('Repost de post (toggle)', () => {
     expect(again.statusCode).toBe(429);
   });
 
+  it('exposes WHO reposted (reposters) on the post payload', async () => {
+    const author = await createAndLoginUser(server, { nickname: 'rp_who_a' });
+    const r1 = await createAndLoginUser(server, { nickname: 'rp_who_b' });
+    const post = await createPost(author.accessToken, 'quem repostou');
+
+    await repost(r1.accessToken, post.id);
+
+    const detail = await server.inject({
+      method: 'GET',
+      url: `/api/posts/${post.id}`,
+      headers: auth(author.accessToken),
+    });
+    const body = JSON.parse(detail.payload);
+    expect(body.repostCount).toBe(1);
+    expect(body.reposters).toHaveLength(1);
+    expect(body.reposters[0].nickname).toBe('rp_who_b');
+    expect(body.reposters[0].id).toBe(r1.id);
+  });
+
+  it('profile payload carries repostsCount and repostedBy attribution', async () => {
+    const author = await createAndLoginUser(server, { nickname: 'rp_attr_a' });
+    const reposter = await createAndLoginUser(server, { nickname: 'rp_attr_b' });
+    const post = await createPost(author.accessToken, 'atribuicao');
+    await repost(reposter.accessToken, post.id);
+
+    // The profile counter reflects the repost.
+    const profile = await server.inject({
+      method: 'GET',
+      url: `/api/users/${reposter.nickname}`,
+      headers: auth(author.accessToken),
+    });
+    expect(JSON.parse(profile.payload).user.repostsCount).toBe(1);
+
+    // The repost list attributes the item to the reposter (clickable name).
+    const list = await server.inject({
+      method: 'GET',
+      url: `/api/users/${reposter.id}/reposts`,
+      headers: auth(author.accessToken),
+    });
+    const item = JSON.parse(list.payload).posts[0];
+    expect(item.repostedBy.nickname).toBe('rp_attr_b');
+    expect(item.repostedBy.id).toBe(reposter.id);
+    // …and the ORIGINAL author is still the post author.
+    expect(item.author.nickname).toBe('rp_attr_a');
+  });
+
   it('404 for an unknown post', async () => {
     const user = await createAndLoginUser(server, { nickname: 'rp_404' });
     expect((await repost(user.accessToken, 'does-not-exist')).statusCode).toBe(404);
@@ -150,9 +196,13 @@ describe('Perfil: lista de reposts', () => {
     expect(body.total).toBe(1);
     expect(body.posts).toHaveLength(1);
     expect(body.posts[0].id).toBe(post.id);
-    expect(body.posts[0].reposted).toBe(true);
+    // `reposted` is relative to the VIEWER (here the original author, who did
+    // NOT repost it) — the reposter's own view sets it true.
+    expect(body.posts[0].reposted).toBe(false);
     // The ORIGINAL author is preserved (the repost references the post).
     expect(body.posts[0].author.nickname).toBe('rpl_a');
+    // …and the attribution points at the reposter.
+    expect(body.posts[0].repostedBy.nickname).toBe('rpl_b');
   });
 
   it('the author of the original sees the repost count on their post', async () => {

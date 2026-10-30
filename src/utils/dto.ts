@@ -74,6 +74,8 @@ export interface ProfileUser extends PublicUser {
   /** Total likes across ALL of the user's posts. */
   likesCount: number;
   postsCount: number;
+  /** How many posts this user reposted (profile "Reposts" tab counter). */
+  repostsCount: number;
   /** A música fixada no perfil (trecho), ou null quando não há. */
   music: ProfileMusicPayload | null;
 }
@@ -115,6 +117,7 @@ export function toProfileUser(
     followingCount: number;
     likesCount: number;
     postsCount: number;
+    repostsCount: number;
   },
 ): ProfileUser {
   return {
@@ -151,10 +154,29 @@ export interface FeedPost {
   repostCount: number;
   /** Whether the VIEWER reposted this post (drives the active button). */
   reposted: boolean;
+  /**
+   * WHO reposted this post (newest first, capped). Powers the "X repostou"
+   * badge above the actions. Empty when nobody reposted it.
+   */
+  reposters: ReposterUser[];
+  /**
+   * Set ONLY when this post is listed as a REPOST on a profile: WHO reposted
+   * it, so the tile can render "Repostado de @x" (clickable).
+   */
+  repostedBy?: ReposterUser | null;
 }
 
 export interface PostDetail extends FeedPost {
   updatedAt: string;
+}
+
+/** A user who reposted a post (badge + "repostado de" attribution). */
+export interface ReposterUser {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+  /** ISO date of that user's repost (newest first in the list). */
+  repostedAt: string;
 }
 
 export function toFeedPost(
@@ -162,16 +184,32 @@ export function toFeedPost(
     user: Pick<User, 'id' | 'nickname' | 'avatarUrl'>;
     _count?: { likes: number; comments: number; reposts?: number };
     likes?: { userId: string }[];
-    reposts?: { userId: string }[];
+    reposts?: {
+      userId: string;
+      createdAt?: Date;
+      user?: Pick<User, 'id' | 'nickname' | 'avatarUrl'>;
+    }[];
   },
   currentUserId?: string,
+  viewerReposted?: boolean,
 ): FeedPost {
   const liked = currentUserId
     ? (post.likes?.some((l) => l.userId === currentUserId) ?? false)
     : false;
-  const reposted = currentUserId
-    ? (post.reposts?.some((r) => r.userId === currentUserId) ?? false)
-    : false;
+  // `reposted` must be per-VIEWER, and the embedded `reposts` list is capped
+  // to the 3 newest (for the badge), so it can NOT be the source of truth.
+  // Callers pass `viewerReposted` when they queried the viewer's own row.
+  const reposted = viewerReposted ?? false;
+  // WHO reposted (only entries that carry the embedded user are usable).
+  const reposters: ReposterUser[] = (post.reposts ?? [])
+    .filter((r) => r.user != null)
+    .map((r) => ({
+      id: r.user!.id,
+      nickname: r.user!.nickname,
+      avatarUrl: r.user!.avatarUrl,
+      repostedAt: (r.createdAt ?? new Date(0)).toISOString(),
+    }))
+    .sort((a, b) => (a.repostedAt < b.repostedAt ? 1 : -1));
   return {
     id: post.id,
     text: post.text,
@@ -189,6 +227,7 @@ export function toFeedPost(
     commentCount: post._count?.comments ?? 0,
     repostCount: post._count?.reposts ?? 0,
     reposted,
+    reposters,
   };
 }
 
