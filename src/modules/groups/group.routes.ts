@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { ApiError, toApiError } from '../../utils/errors.js';
+import { MAX_ALBUM_ITEMS, MAX_CAPTION_LENGTH } from '../chat/chat.service.js';
 import {
   addGroupMember,
   banGroupMember,
@@ -265,6 +266,18 @@ export const groupRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       kind: z.enum(['image', 'video']),
       url: z.string().min(1).max(500),
       replyToMessageId: z.string().min(1).max(64).optional(),
+      caption: z.string().max(MAX_CAPTION_LENGTH).optional(),
+      viewOnce: z.boolean().optional(),
+      items: z
+        .array(
+          z.object({
+            kind: z.enum(['image', 'video']),
+            url: z.string().min(1).max(500),
+            thumbUrl: z.string().max(500).nullish(),
+          }),
+        )
+        .max(MAX_ALBUM_ITEMS)
+        .optional(),
     });
     const parsed = mediaSchema.safeParse(request.body);
     if (!parsed.success) {

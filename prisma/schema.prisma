@@ -92,6 +92,7 @@ model User {
   hiddenGroups          GroupHidden[]
   messageMentions       MessageMention[]
   messageReads          MessageRead[]
+  messageViewOnceOpens  MessageViewOnceOpen[]
   messageDeliveries     MessageDelivery[]
   notificationsReceived Notification[]       @relation("notificationsReceived")
   notificationsSent     Notification[]       @relation("notificationsSent")
@@ -519,6 +520,21 @@ model Message {
   storyType        String?
   storyThumbUrl    String?
   storyPreview     String?
+  // CAPTION for a media message (image/video/album). Null/'' = no caption.
+  // Distinct from `content`, which stays the stable preview label ("📷 Foto")
+  // so the chat LIST never shows a long caption.
+  caption          String?
+  // VIEW-ONCE (foto/vídeo que só pode ser aberta uma vez). When true the
+  // server refuses to hand out the media URL again after the RECIPIENT has
+  // opened it (`viewedAt`), so the "one view" rule is enforced by the server,
+  // not by the UI. The sender always keeps access to their own copy.
+  viewOnce         Boolean   @default(false)
+  viewedAt         DateTime?
+  // ALBUM: media sent together (up to 10) share this id. Null = single media.
+  // The item's own imageUrl/videoUrl stays the PRIMARY (first) file so old
+  // clients still render something; the full set lives in AlbumItem rows.
+  albumId          String?
+  album            AlbumItem[]
 
   // Soft-delete marker for "Excluir para todos". When set, the message is
   // hidden for BOTH participants (all read paths filter it out). The row + a
@@ -531,6 +547,7 @@ model Message {
   // Per-user "Excluir para mim": each participant can hide the message for
   // themselves only (the peer keeps seeing it). One-to-many join rows.
   hiddenBy    MessageHide[]
+  viewOnceOpens MessageViewOnceOpen[]
   mentions    MessageMention[]
   readBy      MessageRead[]
   deliveredTo MessageDelivery[]
@@ -549,6 +566,46 @@ model Message {
   @@index([replyToMessageId])
   @@index([deletedAt])
   @@map("messages")
+}
+
+// One row per (view-once message, user who OPENED it). This is what makes
+// "visualização única" enforceable in a GROUP: each member consumes their own
+// copy, so one person opening the media never burns it for the others. In a
+// DM there is a single row (the one recipient).
+model MessageViewOnceOpen {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  viewedAt  DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@map("message_view_once_opens")
+}
+
+// One file inside an ALBUM message. An album is 2–10 media sent as a single
+// message; the parent Message keeps the caption/viewOnce and the FIRST file,
+// while each file of the set lives here, in order.
+model AlbumItem {
+  id        String   @id @default(cuid())
+  messageId String
+  // 0-based position inside the album (render order).
+  position  Int
+  kind      String // "image" | "video"
+  url       String
+  // Thumbnail for a video item (images use `url` directly). Null for images
+  // and for videos whose cover could not be generated.
+  thumbUrl  String?
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, position])
+  @@index([messageId])
+  @@map("album_items")
 }
 
 // ── Groups ────────────────────────────────────────────────────

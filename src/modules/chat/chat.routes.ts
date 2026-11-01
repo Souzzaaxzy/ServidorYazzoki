@@ -10,6 +10,9 @@ import {
   listConversations,
   markConversationRead,
   sendMediaMessage,
+  markViewOnceOpened,
+  MAX_ALBUM_ITEMS,
+  MAX_CAPTION_LENGTH,
   sendMessage,
   sendStickerMessage,
   sendVoiceMessage,
@@ -120,6 +123,21 @@ export const chatRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
     }
   });
 
+  // VIEW-ONCE: the recipient declares it OPENED a media message. The server
+  // stamps `viewedAt` once; from then on the media URLs are withheld from
+  // them on every read. This is what makes the "só uma vez" rule real — the
+  // UI cannot be the only thing enforcing it, because the URL travels in the
+  // payload.
+  app.post('/messages/:id/viewed', { onRequest: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await markViewOnceOpened(request.user!.id, id);
+      return reply.status(200).send(result);
+    } catch (err) {
+      throw toApiError(err);
+    }
+  });
+
   // Send a MEDIA message (image/video) — the file is uploaded via the
   // standard /api/uploads (image) or /api/uploads/video endpoints and the
   // resulting URL is passed here with the kind. The server validates the URL
@@ -131,6 +149,22 @@ export const chatRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
       kind: z.enum(['image', 'video']),
       url: z.string().min(1).max(500),
       replyToMessageId: z.string().min(1).max(64).optional(),
+      // Optional caption. The server trims + bounds it and keeps it OUT of
+      // `content` (which stays the short inbox label).
+      caption: z.string().max(MAX_CAPTION_LENGTH).optional(),
+      // Send as VIEW-ONCE (opened a single time, enforced server-side).
+      viewOnce: z.boolean().optional(),
+      // ALBUM: the full set when the user picked several files at once.
+      items: z
+        .array(
+          z.object({
+            kind: z.enum(['image', 'video']),
+            url: z.string().min(1).max(500),
+            thumbUrl: z.string().max(500).nullish(),
+          }),
+        )
+        .max(MAX_ALBUM_ITEMS)
+        .optional(),
     });
     const parsed = mediaSchema.safeParse(request.body);
     if (!parsed.success) {

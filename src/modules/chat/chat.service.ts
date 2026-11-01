@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma.js';
+import { randomUUID } from 'node:crypto';
 import { ApiError } from '../../utils/errors.js';
 import { AUTHOR_SELECT } from '../../utils/dto.js';
 import { areFriends } from '../follow/follow.service.js';
@@ -92,6 +93,31 @@ export interface MessageItem {
    * (type/thumbnail/text preview) so the reference keeps rendering in the
    * history even after the story expired. Null for every other message. */
   story: StoryReference | null;
+  /** Caption typed with a media message. Null when there is none (or the
+   * message is not media). The chat LIST still uses `content` (a short
+   * label), so a long caption never bloats the inbox row. */
+  caption: string | null;
+  /** VIEW-ONCE: true when the media may be opened a single time. The server
+   * enforces this — see [mediaVisibleTo]. */
+  viewOnce: boolean;
+  /** When the RECIPIENT opened a view-once message. Once set, the server
+   * stops serving the media URL to them. */
+  viewedAt: string | null;
+  /** True when the media URLs in this item are WITHHELD from the viewer
+   * (view-once already opened by them, or opened by the peer for the
+   * sender's own copy of an already-consumed message). The app renders a
+   * "já visualizado" placeholder instead of the media. */
+  mediaWithheld: boolean;
+  /** ALBUM: the files of a multi-media message, in order. Null/empty when
+   * the message carries a single file. */
+  album: AlbumItemView[] | null;
+}
+
+/** One file of an ALBUM message, as the app receives it. */
+export interface AlbumItemView {
+  kind: 'image' | 'video' | string;
+  url: string;
+  thumbUrl: string | null;
 }
 
 /** Reference to the story a reply message answers. */
@@ -388,6 +414,8 @@ export async function getMessages(
     where,
     orderBy: { id: 'desc' },
     take: safeLimit + 1,
+    // Albums ride along with the page: one query, no per-message lookup.
+    include: { album: { orderBy: { position: 'asc' } } },
   });
   const hasMore = messages.length > safeLimit;
   const page = messages.slice(0, safeLimit).reverse();
@@ -403,13 +431,30 @@ export async function getMessages(
 // for load/list, or the conversation's OTHER participant for realtime
 // broadcasts) — never the sender's. The read hint flips per participant.
 
+/** A message row, optionally carrying its album files (the page queries and
+ * the create() result both feed this function). */
+type MessageWithAlbum = Message & {
+  album?: { kind: string; url: string; thumbUrl: string | null }[];
+};
+
 async function toMessageItems(
-  messages: Message[],
+  messages: MessageWithAlbum[],
   conversationId: string,
   viewerId: string,
 ): Promise<MessageItem[]> {
   // Preconditions (bypass for callers that already enriched the rows).
   if (messages.length === 0) return [];
+
+  // Which of these view-once messages the VIEWER already opened.
+  const viewOnceIds = messages.filter((m) => m.viewOnce).map((m) => m.id);
+  const openedBy = new Set<string>();
+  if (viewOnceIds.length > 0) {
+    const opens = await prisma.messageViewOnceOpen.findMany({
+      where: { messageId: { in: viewOnceIds }, userId: viewerId },
+      select: { messageId: true },
+    });
+    for (const o of opens) openedBy.add(o.messageId);
+  }
 
   const replyIds = messages
     .map((m) => m.replyToMessageId)
@@ -463,20 +508,29 @@ async function toMessageItems(
         };
       }
     }
+    // VIEW-ONCE enforcement. The rule: a view-once message's media is served
+    // to the RECIPIENT exactly until they open it. After that the URLs are
+    // withheld (nulled) so a re-open — or a peek at the payload — shows
+    // nothing. The SENDER keeps their own copy forever (it is their media),
+    // but once the recipient has viewed it the sender sees it as consumed.
+    const isSender = m.senderId === viewerId;
+    // Per-VIEWER rule: consult who opened it (works for DMs and groups alike).
+    const consumed = m.viewOnce === true && m.viewedAt !== null;
+    const mediaWithheld = consumed && !isSender && openedBy.has(m.id);
     return {
       id: m.id,
       conversationId,
       senderId: m.senderId,
       content: m.content,
       createdAt: m.createdAt.toISOString(),
-      mine: m.senderId === viewerId,
+      mine: isSender,
       readAt: m.readAt ? m.readAt.toISOString() : null,
       replyTo,
       type: m.type ?? 'text',
       audioUrl: m.audioUrl ?? null,
       durationMs: m.durationMs ?? null,
-      imageUrl: m.imageUrl ?? null,
-      videoUrl: m.videoUrl ?? null,
+      imageUrl: mediaWithheld ? null : m.imageUrl ?? null,
+      videoUrl: mediaWithheld ? null : m.videoUrl ?? null,
       stickerUrl: m.stickerUrl ?? null,
       stickerId: m.stickerId ?? null,
       stickerPackageId: m.stickerPackageId ?? null,
@@ -488,20 +542,181 @@ async function toMessageItems(
             preview: m.storyPreview ?? '',
           }
         : null,
+      caption: m.caption ?? null,
+      viewOnce: m.viewOnce === true,
+      viewedAt: m.viewedAt ? m.viewedAt.toISOString() : null,
+      mediaWithheld,
+      album: mediaWithheld
+        ? null
+        : (m.album ?? []).map((a) => ({
+            kind: a.kind,
+            url: a.url,
+            thumbUrl: a.thumbUrl ?? null,
+          })),
     };
   });
 }
 
+/** Max files in one album (the app enforces the same cap). */
+export const MAX_ALBUM_ITEMS = 10;
+
+/** Max caption length, matching the app's field. */
+export const MAX_CAPTION_LENGTH = 2200;
+
+/** Trim + bound a caption; '' becomes null (no caption). */
+export function cleanCaption(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  const t = raw.trim();
+  if (!t) return null;
+  return t.slice(0, MAX_CAPTION_LENGTH);
+}
+
+/**
+ * Normalise the media set of a send into an ordered list of files.
+ *
+ * `items` (the album) wins when present; otherwise the single `url`/`kind` is
+ * the whole set. The list is capped at [MAX_ALBUM_ITEMS] — the client caps it
+ * too, but the server never trusts the client for a bound it enforces.
+ */
+export function normalizeAlbum(media: {
+  kind: 'image' | 'video';
+  url: string;
+  items?: { kind: 'image' | 'video'; url: string; thumbUrl?: string | null }[];
+}): { kind: 'image' | 'video'; url: string; thumbUrl?: string | null }[] {
+  const list =
+    media.items && media.items.length > 0
+      ? media.items
+      : [{ kind: media.kind, url: media.url }];
+  if (list.length > MAX_ALBUM_ITEMS) {
+    throw ApiError.invalidRequest(
+      `Um álbum pode ter no máximo ${MAX_ALBUM_ITEMS} mídias.`,
+    );
+  }
+  for (const it of list) {
+    if (!it.url || !it.url.trim()) {
+      throw ApiError.invalidRequest('Mídia sem arquivo.');
+    }
+  }
+  return list;
+}
+
+/** The stable inbox label for a media message (never the caption). */
+export function mediaLabel(
+  album: { kind: string }[],
+  viewOnce: boolean,
+): string {
+  const n = album.length;
+  if (n > 1) return `🖼️ Álbum (${n})`;
+  const one = album[0]?.kind === 'video' ? '🎥 Vídeo' : '📷 Foto';
+  return viewOnce ? `🔒 ${one}` : one;
+}
+
+// ── View-once: mark a media message as consumed ──────────────
+/**
+ * Record that `userId` OPENED a view-once media message.
+ *
+ * This is what makes "visualização única" real rather than cosmetic: the
+ * moment the recipient opens it, `viewedAt` is stamped and every later read
+ * of that message WITHHOLDS the media URLs from them (see `toMessageItems`).
+ * A re-open — or a peek at a cached payload — therefore finds nothing.
+ *
+ * Rules:
+ *  * only the RECIPIENT consumes it (the sender keeps their own copy);
+ *  * idempotent: a second call is a no-op (the first stamp wins, so the
+ *    "viewed at" time is the REAL first view);
+ *  * non-view-once messages are rejected — this endpoint exists for exactly
+ *    one purpose and must not become a general "mark read".
+ */
+export async function markViewOnceOpened(
+  userId: string,
+  messageId: string,
+): Promise<{ viewedAt: string }> {
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: {
+      id: true,
+      senderId: true,
+      conversationId: true,
+      groupId: true,
+      viewOnce: true,
+      viewedAt: true,
+      deletedAt: true,
+    },
+  });
+  if (!message || message.deletedAt) {
+    throw ApiError.notFound('Mensagem não encontrada.');
+  }
+  if (!message.viewOnce) {
+    throw ApiError.invalidRequest(
+      'Esta mensagem não é de visualização única.',
+    );
+  }
+  if (message.senderId === userId) {
+    throw ApiError.invalidRequest('Você não pode abrir a sua própria mídia.');
+  }
+
+  // Membership check — the same rule the read paths use.
+  if (message.conversationId) {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: message.conversationId },
+      select: { userOneId: true, userTwoId: true },
+    });
+    const isMember =
+      conversation !== null &&
+      (conversation.userOneId === userId || conversation.userTwoId === userId);
+    if (!isMember) {
+      throw ApiError.forbidden('Você não tem acesso a esta mensagem.');
+    }
+  } else if (message.groupId) {
+    const member = await prisma.groupMember.findFirst({
+      where: { groupId: message.groupId, userId },
+      select: { id: true },
+    });
+    if (!member) {
+      throw ApiError.forbidden('Você não tem acesso a esta mensagem.');
+    }
+  }
+
+  // Record the open PER USER (idempotent: the unique (message,user) pair keeps
+  // the FIRST view time). The row is what the read paths consult, so it works
+  // for a group too — one member opening the media never consumes it for the
+  // others. `Message.viewedAt` is stamped as well, as the simple "was it ever
+  // opened" marker for the DM case and for the sender's own UI.
+  const existing = await prisma.messageViewOnceOpen.findUnique({
+    where: { messageId_userId: { messageId, userId } },
+    select: { viewedAt: true },
+  });
+  if (existing) return { viewedAt: existing.viewedAt.toISOString() };
+
+  const now = new Date();
+  await prisma.messageViewOnceOpen.create({
+    data: { messageId, userId, viewedAt: now },
+  });
+  if (!message.viewedAt) {
+    await prisma.message.update({
+      where: { id: messageId },
+      data: { viewedAt: now },
+    });
+  }
+  return { viewedAt: now.toISOString() };
+}
+
 // ── Send a media message (image/video) ───────────────────────
-// The file is ALREADY stored via the standard upload endpoints and the
-// client passes the resulting URL. This function persists the message
-// (type = "image"|"video", stable preview label) with the media reference,
-// validates the reply target belongs to the same conversation and fans the
-// message out via the SAME realtime channel as text/voice.
 export async function sendMediaMessage(
   userId: string,
   conversationId: string,
-  media: { kind: 'image' | 'video'; url: string; replyToMessageId?: string },
+  media: {
+    kind: 'image' | 'video';
+    url: string;
+    replyToMessageId?: string;
+    /** Optional caption shown under the media (never in the inbox preview). */
+    caption?: string;
+    /** Send as VIEW-ONCE: the recipient may open it a single time. */
+    viewOnce?: boolean;
+    /** ALBUM: the full set of files (2–10). When present, `url`/`kind` are
+     * the FIRST item and the rest live here. */
+    items?: { kind: 'image' | 'video'; url: string; thumbUrl?: string | null }[];
+  },
 ): Promise<MessageItem> {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -528,18 +743,53 @@ export async function sendMediaMessage(
     }
   }
 
-  const label = media.kind === 'video' ? '🎥 Vídeo' : '📷 Foto';
+  const album = normalizeAlbum(media);
+  const viewOnce = media.viewOnce === true;
+  // An album is never view-once: "open once" and "browse a set" contradict
+  // each other, and the app's toggle is hidden for multi-select.
+  if (viewOnce && album.length > 1) {
+    throw ApiError.invalidRequest(
+      'Álbum não pode ser de visualização única.',
+    );
+  }
+  const caption = cleanCaption(media.caption);
+  const label = mediaLabel(album, viewOnce);
+
   const message = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
       content: label,
-      type: media.kind,
-      ...(media.kind === 'image'
-        ? { imageUrl: media.url }
-        : { videoUrl: media.url }),
+      type: album.length > 1 ? 'album' : media.kind,
+      // The FIRST file stays on the row so older clients (and any code that
+      // reads imageUrl/videoUrl directly) still render something.
+      ...(album.length > 1
+        ? { imageUrl: album[0].kind === 'video' ? null : album[0].url,
+            videoUrl: album[0].kind === 'video' ? album[0].url : null }
+        : media.kind === 'image'
+          ? { imageUrl: media.url }
+          : { videoUrl: media.url }),
       replyToMessageId: media.replyToMessageId?.trim() || null,
+      caption: caption || null,
+      viewOnce,
+      albumId: album.length > 1 ? `alb_${randomUUID()}` : null,
+      ...(album.length > 1
+        ? {
+            album: {
+              create: album.map((it, i) => ({
+                position: i,
+                kind: it.kind,
+                url: it.url,
+                thumbUrl: it.thumbUrl ?? null,
+              })),
+            },
+          }
+        : {}),
     },
+    // Return the album with the row: the recipient/own views are built from
+    // THIS object, so without the include an album would render as a single
+    // photo until the next page load.
+    include: { album: { orderBy: { position: 'asc' } } },
   });
 
   await prisma.conversation.update({

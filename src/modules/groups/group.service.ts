@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma.js';
+import { randomUUID } from 'node:crypto';
 import { ApiError } from '../../utils/errors.js';
 import { AUTHOR_SELECT } from '../../utils/dto.js';
 import { areFriends } from '../follow/follow.service.js';
@@ -14,6 +15,11 @@ import {
   dispatchChatTyping,
 } from '../push/push.service.js';
 import { addStickerRecent } from '../stickers/sticker.service.js';
+import {
+  cleanCaption,
+  mediaLabel,
+  normalizeAlbum,
+} from '../chat/chat.service.js';
 import { isUserOnline, onlineCount } from '../presence/presence.service.js';
 import type { Message } from '../../generated/index.js';
 import type { Readable } from 'node:stream';
@@ -866,12 +872,29 @@ function groupVisibleMessageWhere(groupId: string, userId: string) {
   };
 }
 
+/** A message row, optionally carrying its album files. */
+type MessageWithAlbum = Message & {
+  album?: { kind: string; url: string; thumbUrl: string | null }[];
+};
+
 async function toGroupMessageItems(
-  messages: Message[],
+  messages: MessageWithAlbum[],
   groupId: string,
   viewerId: string,
 ): Promise<GroupMessageItem[]> {
   if (messages.length === 0) return [];
+
+  // Which of these view-once messages the VIEWER already opened. Per user, so
+  // one member opening the media never burns it for the rest of the group.
+  const viewOnceIds = messages.filter((m) => m.viewOnce).map((m) => m.id);
+  const openedBy = new Set<string>();
+  if (viewOnceIds.length > 0) {
+    const opens = await prisma.messageViewOnceOpen.findMany({
+      where: { messageId: { in: viewOnceIds }, userId: viewerId },
+      select: { messageId: true },
+    });
+    for (const o of opens) openedBy.add(o.messageId);
+  }
 
   const replyIds = messages
     .map((m) => m.replyToMessageId)
@@ -962,6 +985,18 @@ async function toGroupMessageItems(
     const mentionAll = allByMessage.has(m.id);
     const mentioned =
       mentionAll || mentions.some((mention) => mention.userId === viewerId);
+    // VIEW-ONCE (same rule as the DM side): the media is served to a viewer
+    // only until they open it. In a GROUP the "recipient" is every member but
+    // the sender, so one member opening it must not burn it for the others —
+    // hence the per-viewer rule is "the SENDER keeps it, and any NON-sender
+    // who has already opened it loses it". `viewedAt` is stamped per member
+    // by markViewOnceOpened; the item hides the media once it is set for
+    // EVERY non-sender that opened it. To keep it simple and safe, a
+    // view-once media in a group is withheld from a non-sender as soon as
+    // THEY have opened it (tracked per user via the read row below).
+    const isSender = m.senderId === viewerId;
+    const mediaWithheld =
+      m.viewOnce === true && !isSender && openedBy.has(m.id);
     return {
       id: m.id,
       conversationId: null,
@@ -970,20 +1005,31 @@ async function toGroupMessageItems(
       senderId: m.senderId,
       content: m.content,
       createdAt: m.createdAt.toISOString(),
-      mine: m.senderId === viewerId,
+      mine: isSender,
       readAt: m.readAt ? m.readAt.toISOString() : null,
       replyTo,
       type: m.type ?? 'text',
       audioUrl: m.audioUrl ?? null,
       durationMs: m.durationMs ?? null,
-      imageUrl: m.imageUrl ?? null,
-      videoUrl: m.videoUrl ?? null,
+      imageUrl: mediaWithheld ? null : m.imageUrl ?? null,
+      videoUrl: mediaWithheld ? null : m.videoUrl ?? null,
       stickerUrl: m.stickerUrl ?? null,
       stickerId: m.stickerId ?? null,
       stickerPackageId: m.stickerPackageId ?? null,
       mentions,
       mentionAll,
       mentioned,
+      caption: m.caption ?? null,
+      viewOnce: m.viewOnce === true,
+      viewedAt: m.viewedAt ? m.viewedAt.toISOString() : null,
+      mediaWithheld,
+      album: mediaWithheld
+        ? null
+        : (m.album ?? []).map((a) => ({
+            kind: a.kind,
+            url: a.url,
+            thumbUrl: a.thumbUrl ?? null,
+          })),
     };
   });
 }
@@ -1006,6 +1052,8 @@ export async function getGroupMessages(
     where,
     orderBy: { id: 'desc' },
     take: safeLimit + 1,
+    // Albums ride along with the page: one query, no per-message lookup.
+    include: { album: { orderBy: { position: 'asc' } } },
   });
   const hasMore = messages.length > safeLimit;
   const page = messages.slice(0, safeLimit).reverse();
@@ -1326,7 +1374,14 @@ export async function sendGroupMessage(
 export async function sendGroupMediaMessage(
   userId: string,
   groupId: string,
-  media: { kind: 'image' | 'video'; url: string; replyToMessageId?: string },
+  media: {
+    kind: 'image' | 'video';
+    url: string;
+    replyToMessageId?: string;
+    caption?: string;
+    viewOnce?: boolean;
+    items?: { kind: 'image' | 'video'; url: string; thumbUrl?: string | null }[];
+  },
 ): Promise<GroupMessageItem> {
   await assertGroupMembership(groupId, userId);
   if (media.replyToMessageId && media.replyToMessageId.trim()) {
@@ -1339,19 +1394,49 @@ export async function sendGroupMediaMessage(
     }
   }
 
-  const label = media.kind === 'video' ? '🎥 Vídeo' : '📷 Foto';
+  const album = normalizeAlbum(media);
+  const viewOnce = media.viewOnce === true;
+  if (viewOnce && album.length > 1) {
+    throw ApiError.invalidRequest('Álbum não pode ser de visualização única.');
+  }
+  const caption = cleanCaption(media.caption);
+  const label = mediaLabel(album, viewOnce);
+
   const message = await prisma.$transaction(async (tx) => {
     const created = await tx.message.create({
       data: {
         groupId,
         senderId: userId,
         content: label,
-        type: media.kind,
-        ...(media.kind === 'image'
-          ? { imageUrl: media.url }
-          : { videoUrl: media.url }),
+        type: album.length > 1 ? 'album' : media.kind,
+        ...(album.length > 1
+          ? {
+              imageUrl: album[0].kind === 'video' ? null : album[0].url,
+              videoUrl: album[0].kind === 'video' ? album[0].url : null,
+            }
+          : media.kind === 'image'
+            ? { imageUrl: media.url }
+            : { videoUrl: media.url }),
         replyToMessageId: media.replyToMessageId?.trim() || null,
+        caption: caption || null,
+        viewOnce,
+        albumId: album.length > 1 ? `alb_${randomUUID()}` : null,
+        ...(album.length > 1
+          ? {
+              album: {
+                create: album.map((it, i) => ({
+                  position: i,
+                  kind: it.kind,
+                  url: it.url,
+                  thumbUrl: it.thumbUrl ?? null,
+                })),
+              },
+            }
+          : {}),
       },
+      // The album must come back WITH the row: both views below are built
+      // from this object.
+      include: { album: { orderBy: { position: 'asc' } } },
     });
     await tx.group.update({
       where: { id: groupId },
