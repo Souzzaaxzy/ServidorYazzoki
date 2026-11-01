@@ -393,6 +393,9 @@ model ProfileView {
   id        String   @id @default(cuid())
   viewerId  String
   profileId String
+  // How many times THIS viewer opened THIS profile (the list shows
+  // "visualizou N vezes" + "última vez há ...").
+  views     Int      @default(1)
   viewedAt  DateTime @default(now())
   createdAt DateTime @default(now())
 

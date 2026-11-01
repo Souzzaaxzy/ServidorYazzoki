@@ -53,24 +53,43 @@ describe('Visualizações de perfil', () => {
     expect(body.views[0].user.id).toBeTruthy();
   });
 
-  it('is IDEMPOTENT per visitor: re-visiting updates the time, not the count', async () => {
+  it('counts visits per visitor (1 row, N views) and notifies the owner', async () => {
     const owner = await createAndLoginUser(server, { nickname: 'pv_idem_o' });
     const v = await createAndLoginUser(server, { nickname: 'pv_idem_v' });
 
-    await server.inject({
-      method: 'POST',
-      url: `/api/users/${owner.id}/profile-view`,
-      headers: auth(v.accessToken),
-    });
-    await server.inject({
-      method: 'POST',
-      url: `/api/users/${owner.id}/profile-view`,
-      headers: auth(v.accessToken),
-    });
+    for (var i = 0; i < 3; i++) {
+      await server.inject({
+        method: 'POST',
+        url: `/api/users/${owner.id}/profile-view`,
+        headers: auth(v.accessToken),
+      });
+    }
 
+    // ONE row for the pair, with the visit count.
     expect(
       await prisma.profileView.count({ where: { profileId: owner.id } }),
     ).toBe(1);
+    const row = await prisma.profileView.findFirst({
+      where: { profileId: owner.id },
+    });
+    expect(row!.views).toBe(3);
+
+    // The owner was notified (native push + in-app list). The cooldown keeps
+    // it to ONE notification, not three.
+    expect(
+      await prisma.notification.count({
+        where: { recipientId: owner.id, actorId: v.id, type: 'PROFILE_VIEW' },
+      }),
+    ).toBe(1);
+
+    // The list exposes the counter for the "N vezes" line.
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/users/${owner.id}/profile-views`,
+      headers: auth(owner.accessToken),
+    });
+    const body = JSON.parse(res.payload);
+    expect(body.views[0].views).toBe(3);
   });
 
   it('never records a self-view', async () => {

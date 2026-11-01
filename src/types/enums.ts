@@ -37,6 +37,8 @@ export const NotificationType = {
   REPOST: 'REPOST',
   /** Someone reposted YOUR story. */
   STORY_REPOST: 'STORY_REPOST',
+  /** Someone opened YOUR profile. */
+  PROFILE_VIEW: 'PROFILE_VIEW',
 } as const;
 export type NotificationType =
   (typeof NotificationType)[keyof typeof NotificationType];

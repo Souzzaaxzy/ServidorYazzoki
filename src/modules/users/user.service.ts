@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma.js';
 import { ApiError, toApiError } from '../../utils/errors.js';
 import { nicknameKey, normalizeNickname } from '../../utils/normalize.js';
-import { parsePublicId } from '../../utils/public-id.js';
+import { parsePublicId, PUBLIC_ID_DIGITS } from '../../utils/public-id.js';
 import { AUTHOR_SELECT, toAuthUser, toFeedPost, toProfileUser, type AuthUser, type FeedPost, type ProfileUser } from '../../utils/dto.js';
 import { followCounts, getFollowState } from '../follow/follow.service.js';
 import type { FollowState } from '../../types/enums.js';
@@ -87,10 +87,34 @@ export async function updateProfile(
     bio: string | null;
     avatarUrl: string | null;
     bannerUrl: string | null;
+    publicId: string | number | null;
   }>,
 ): Promise<AuthUser> {
   try {
     const data: Record<string, unknown> = {};
+    // Changing the public `#id`: the user picks the number they want. It must
+    // still be a positive integer and UNIQUE (another account may already own
+    // it) — checked here so the user gets a clear message instead of a raw
+    // database constraint error.
+    if (input.publicId !== undefined && input.publicId !== null) {
+      const wanted = parsePublicId(String(input.publicId));
+      if (wanted === null) {
+        throw ApiError.validation('ID inválido. Use apenas números.');
+      }
+      if (String(wanted).length > PUBLIC_ID_DIGITS) {
+        throw ApiError.validation(
+          `O ID deve ter no máximo ${PUBLIC_ID_DIGITS} dígitos.`,
+        );
+      }
+      const owner = await prisma.user.findUnique({
+        where: { publicId: wanted },
+        select: { id: true },
+      });
+      if (owner && owner.id !== userId) {
+        throw ApiError.conflict('Este ID já está em uso. Escolha outro.');
+      }
+      data.publicId = wanted;
+    }
     if (input.nickname !== undefined) {
       data.nickname = normalizeNickname(input.nickname);
       data.nicknameKey = nicknameKey(input.nickname);

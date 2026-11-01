@@ -18,6 +18,14 @@ export const updateProfileSchema = z.object({
   avatarUrl: imageUrlSchema('avatar').optional().nullable(),
   // Wide profile cover image. Same validation rules as the avatar.
   bannerUrl: imageUrlSchema('banner').optional().nullable(),
+  // The public `#id` the user wants to adopt. Accepts `#1234`, `1234` or a
+  // full 8-digit form (the leading zeros are cosmetic). Uniqueness is checked
+  // in the service (a friendly conflict message instead of a raw DB error).
+  publicId: z
+    .union([z.string(), z.number()])
+    .optional()
+    .nullable()
+    .transform((v) => (v == null ? undefined : v)),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

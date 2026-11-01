@@ -331,6 +331,8 @@ export function composeBody(type: string, actorNickname: string): string {
       return `${actorNickname} repostou o seu post.`;
     case NotificationType.STORY_REPOST:
       return `${actorNickname} repostou o seu stories.`;
+    case NotificationType.PROFILE_VIEW:
+      return `${actorNickname} visualizou o seu perfil.`;
     default:
       return `${actorNickname} interagiu com você.`;
   }
