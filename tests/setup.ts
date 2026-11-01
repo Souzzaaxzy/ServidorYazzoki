@@ -57,6 +57,7 @@ const TABLES = [
   'conversations',
   'notifications',
   'follows',
+  'profile_views',
   'devices',
   'game_results',
   'game_sessions',

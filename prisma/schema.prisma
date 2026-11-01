@@ -108,6 +108,8 @@ model User {
   stickerFavorites         StickerFavorite[]
   stickerRecents           StickerRecent[]
   storyReposts             StoryRepost[]
+  profileViewsGiven        ProfileView[] @relation("profileViewsGiven")
+  profileViewsReceived     ProfileView[] @relation("profileViewsReceived")
   reposts                  Repost[]
 
   @@index([nickname])
@@ -379,6 +381,27 @@ model Follow {
   @@index([followingId])
   @@index([followerId])
   @@map("follows")
+}
+
+// A profile VIEW: who opened whose profile, and when. One row per
+// (viewerId, profileId) pair — re-opening UPDATES `viewedAt` (so the list is
+// "last seen" per visitor, never thousands of rows for one person).
+//
+// PRIVACY: this is only ever read by the PROFILE OWNER (`profileId`). Another
+// user can never learn who visited someone else's profile.
+model ProfileView {
+  id        String   @id @default(cuid())
+  viewerId  String
+  profileId String
+  viewedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  viewer  User @relation("profileViewsGiven", fields: [viewerId], references: [id], onDelete: Cascade)
+  profile User @relation("profileViewsReceived", fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerId, profileId])
+  @@index([profileId, viewedAt])
+  @@map("profile_views")
 }
 
 // Notifications are persistent (SQLite) and always scoped to their

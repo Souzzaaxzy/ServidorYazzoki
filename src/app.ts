@@ -30,6 +30,7 @@ import { configRoutes } from './modules/config/config.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { followRoutes } from './modules/follow/follow.routes.js';
 import { repostRoutes } from './modules/reposts/repost.routes.js';
+import { profileViewRoutes } from './modules/profileviews/profileview.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
 import { groupRoutes } from './modules/groups/group.routes.js';
 import { notificationRoutes } from './modules/notifications/notification.routes.js';
@@ -153,6 +154,7 @@ export async function buildServer() {
   await app.register(userRoutes, { prefix: '/api' });
   await app.register(followRoutes, { prefix: '/api' });
   await app.register(repostRoutes, { prefix: '/api' });
+  await app.register(profileViewRoutes, { prefix: '/api' });
   await app.register(chatRoutes, { prefix: '/api' });
   await app.register(groupRoutes, { prefix: '/api' });
   await app.register(notificationRoutes, { prefix: '/api' });
