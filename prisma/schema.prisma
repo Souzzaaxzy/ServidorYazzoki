@@ -60,6 +60,10 @@ model User {
   // screen. Null → no banner (the app draws its default gradient cover).
   // Stored as a /static/... path or an absolute URL, same rules as avatarUrl.
   bannerUrl        String?
+  // Theme shown to OTHER users on this profile (a catalog id, e.g. 'sakura').
+  // Null/empty = the viewer's own theme. Validated against a WHITELIST so an
+  // unknown id can never be stored (the app would have no palette for it).
+  profileThemeId   String?
   bio              String   @default("")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

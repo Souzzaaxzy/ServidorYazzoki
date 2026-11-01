@@ -15,6 +15,10 @@ export const AUTHOR_SELECT = {
   // PublicUser (the profile screen renders the banner; feed/search/friends
   // simply ignore it when not needed).
   bannerUrl: true,
+  // The published profile theme rides along with every author payload, so a
+  // profile opened from the feed/search/friends renders the owner's theme
+  // without an extra request.
+  profileThemeId: true,
 } as const;
 
 // Public user shape — never exposes passwordHash, recoveryCodeHash or role
@@ -31,12 +35,24 @@ export interface PublicUser {
   bannerUrl: string | null;
   bio: string;
   createdAt: string;
+  /**
+   * Theme id published on this profile (shown to OTHER users). Null/'' → the
+   * viewer's own theme. Always a value from the server whitelist.
+   */
+  profileThemeId: string | null;
 }
 
 export function toPublicUser(
   user: Pick<
     User,
-    'id' | 'publicId' | 'nickname' | 'avatarUrl' | 'bannerUrl' | 'bio' | 'createdAt'
+    | 'id'
+    | 'publicId'
+    | 'nickname'
+    | 'avatarUrl'
+    | 'bannerUrl'
+    | 'bio'
+    | 'createdAt'
+    | 'profileThemeId'
   >,
 ): PublicUser {
   return {
@@ -48,6 +64,7 @@ export function toPublicUser(
     bannerUrl: user.bannerUrl,
     bio: user.bio,
     createdAt: user.createdAt.toISOString(),
+    profileThemeId: user.profileThemeId ?? null,
   };
 }
 

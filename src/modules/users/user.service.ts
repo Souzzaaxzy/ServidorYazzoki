@@ -2,6 +2,7 @@ import { prisma } from '../../config/prisma.js';
 import { ApiError, toApiError } from '../../utils/errors.js';
 import { nicknameKey, normalizeNickname } from '../../utils/normalize.js';
 import { parsePublicId, PUBLIC_ID_DIGITS } from '../../utils/public-id.js';
+import { isValidThemeId } from '../../utils/themes.js';
 import { AUTHOR_SELECT, toAuthUser, toFeedPost, toProfileUser, type AuthUser, type FeedPost, type ProfileUser } from '../../utils/dto.js';
 import { followCounts, getFollowState } from '../follow/follow.service.js';
 import type { FollowState } from '../../types/enums.js';
@@ -88,6 +89,7 @@ export async function updateProfile(
     avatarUrl: string | null;
     bannerUrl: string | null;
     publicId: string | number | null;
+    profileThemeId: string | null;
   }>,
 ): Promise<AuthUser> {
   try {
@@ -124,6 +126,15 @@ export async function updateProfile(
     // `null` clears the banner (back to the default cover); `undefined`
     // leaves it untouched — same contract as avatarUrl.
     if (input.bannerUrl !== undefined) data.bannerUrl = input.bannerUrl;
+    // Published profile theme. WHITELIST: only catalog ids (or '' to clear)
+    // are stored — an unknown id would leave the app without a palette.
+    if (input.profileThemeId !== undefined) {
+      const theme = (input.profileThemeId ?? '').trim();
+      if (!isValidThemeId(theme)) {
+        throw ApiError.validation('Tema desconhecido.');
+      }
+      data.profileThemeId = theme === '' ? null : theme;
+    }
 
     const user = await prisma.user.update({
       where: { id: userId },

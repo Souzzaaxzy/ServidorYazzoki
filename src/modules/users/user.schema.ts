@@ -21,6 +21,13 @@ export const updateProfileSchema = z.object({
   // The public `#id` the user wants to adopt. Accepts `#1234`, `1234` or a
   // full 8-digit form (the leading zeros are cosmetic). Uniqueness is checked
   // in the service (a friendly conflict message instead of a raw DB error).
+  // Tema publicado no perfil (whitelist validada no service). `''` limpa.
+  profileThemeId: z
+    .string()
+    .trim()
+    .max(40, 'Tema inválido')
+    .optional()
+    .nullable(),
   publicId: z
     .union([z.string(), z.number()])
     .optional()
